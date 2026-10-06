@@ -5,15 +5,22 @@ import {
   subscribeAnomalies, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
 } from './store.js';
 
+// Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
+// (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
+// sans appel Firebase. Le mot de passe saisi est transmis tel quel.
+// L’adresse du compte n’est jamais affichée.
+const INFRA_OPERATOR = 'infra_lvn';
+const INFRA_AUTH_EMAIL = 'lolo.dalzotto@gmail.com';
+const LOGIN_ERROR = 'Identifiant ou mot de passe incorrect.';
+
 let anomalies = [];
 let selectedBuilding = 'A';
-let actorName = 'infra_lvn';
 let unsubscribe = null;
 
 const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
-  email: $('#email'), password: $('#password'), firebaseFields: $('#firebase-login-fields'), demoNote: $('#demo-note'),
+  username: $('#username'), password: $('#password'), loginError: $('#login-error'),
   mode: $('#mode-pill'), plans: $('#infra-plans'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
@@ -127,7 +134,7 @@ function openCreateModal(preselectedRoomId = '') {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const room = getRoom(fd.get('roomId')); const description = String(fd.get('description')).trim();
     if (!room || !description) return;
     try {
-      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:actorName, description, category:classifyCategory(description), urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
+      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:INFRA_OPERATOR, description, category:classifyCategory(description), urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
       closeModal(); toast('Anomalie créée.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
@@ -153,13 +160,13 @@ function openAnomalyModal(id) {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const status = fd.get('status');
     const label = status !== a.status ? `Statut passé à ${status === 'a_traiter' ? 'À traiter' : status === 'en_cours' ? 'En cours' : 'Résolu'}` : 'Anomalie mise à jour';
     try {
-      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:actorName, actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null });
+      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:INFRA_OPERATOR, actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null });
       closeModal(); toast('Anomalie mise à jour.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
   $('#delete-anomaly').addEventListener('click', async () => {
     if (!confirm('Supprimer ce signalement créé par erreur ?')) return;
-    try { await deleteAnomaly(id, actorName); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
+    try { await deleteAnomaly(id, INFRA_OPERATOR); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
   });
 }
 
@@ -167,15 +174,35 @@ async function init() {
   fillCategories();
   const demo = getAppMode() === 'demo';
   els.mode.textContent = demo ? 'Mode démo' : 'Firebase actif'; els.mode.classList.toggle('demo', demo);
-  els.demoNote.classList.toggle('hidden', !demo); els.firebaseFields.classList.toggle('hidden', demo);
-  if (await hasInfraSession()) openShell();
 
   els.loginForm.addEventListener('submit', async e => {
-    e.preventDefault(); actorName = 'infra_lvn';
-    try { const identifier = els.email.value.trim();
-    const firebaseEmail = identifier.toLowerCase() === 'infra_lvn' ? 'lolo.dalzotto@gmail.com' : identifier;
-    await loginInfra(firebaseEmail, els.password.value); openShell(); } catch(err) { toast('Connexion impossible : ' + (err.message || 'identifiants invalides')); }
+    e.preventDefault();
+    els.loginError.textContent = '';
+    els.loginError.classList.add('hidden');
+    const username = els.username.value.trim().toLowerCase();
+    if (username !== INFRA_OPERATOR) {
+      els.loginError.textContent = LOGIN_ERROR;
+      els.loginError.classList.remove('hidden');
+      return;
+    }
+    const submitBtn = els.loginForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      await loginInfra(INFRA_AUTH_EMAIL, els.password.value);
+      openShell();
+    } catch {
+      els.loginError.textContent = LOGIN_ERROR;
+      els.loginError.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
+
+  try {
+    if (await hasInfraSession()) openShell();
+  } catch {
+    // Le formulaire reste disponible si le contrôle de session échoue.
+  }
 
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
   document.querySelectorAll('[data-infra-building]').forEach(btn => btn.addEventListener('click', () => {
