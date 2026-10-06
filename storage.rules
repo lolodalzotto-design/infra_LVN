@@ -5,24 +5,34 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // Remplacer cette valeur par l'adresse e-mail du compte Infra commun.
     function isInfra() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'A_REMPLACER_EMAIL_INFRA';
     }
 
-    function validImage() {
-      return request.resource.size < 8 * 1024 * 1024
+    function validImageUpload() {
+      return request.resource != null
+        && request.resource.size < 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
 
     match /reports/{uid}/{fileName} {
-      // Chaque agent anonyme ne peut déposer/lire que sa propre photo.
-      allow create: if signedIn() && request.auth.uid == uid && validImage();
+      // L'agent anonyme peut envoyer/lire uniquement sa propre photo.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && validImageUpload();
+
       allow read: if (signedIn() && request.auth.uid == uid) || isInfra();
-      allow update, delete: if isInfra();
+      allow update: if isInfra() && validImageUpload();
+      allow delete: if isInfra();
     }
 
     match /resolutions/{uid}/{fileName} {
-      allow read, create, update, delete: if isInfra() && validImage();
+      allow read: if isInfra();
+      allow create, update: if isInfra() && validImageUpload();
+      allow delete: if isInfra();
     }
   }
 }
