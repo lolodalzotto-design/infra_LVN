@@ -94,20 +94,14 @@ export async function preparePublicSession() {
 }
 
 export async function loginInfra(email, password) {
-  if (APP_MODE === 'demo') {
-    localStorage.setItem(DEMO_SESSION_KEY, '1');
-    return { email: email || 'demo@infra.local' };
-  }
   const { auth, authMod } = await getFirebase();
   const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
+  if (APP_MODE === 'demo') localStorage.setItem(DEMO_SESSION_KEY, '1');
   return credential.user;
 }
 
 export async function logoutInfra() {
-  if (APP_MODE === 'demo') {
-    localStorage.removeItem(DEMO_SESSION_KEY);
-    return;
-  }
+  if (APP_MODE === 'demo') localStorage.removeItem(DEMO_SESSION_KEY);
   const { auth, authMod } = await getFirebase();
   await authMod.signOut(auth);
 }
@@ -147,7 +141,7 @@ export async function createAnomaly(payload, photoFile = null) {
       at: isoNow(),
       actor: payload.reporterFirstName || payload.reporterLastName
         ? `${payload.reporterFirstName || ''} ${payload.reporterLastName || ''}`.trim()
-        : (payload.actor || 'Responsable Infra')
+        : (payload.actor || 'infra_lvn')
     }]
   };
 
@@ -201,7 +195,7 @@ export function subscribeAnomalies(callback) {
   return () => unsub();
 }
 
-export async function updateAnomaly(id, patch, { actor = 'Responsable Infra', actionLabel = 'Anomalie modifiée', resolutionPhotoFile = null } = {}) {
+export async function updateAnomaly(id, patch, { actor = 'infra_lvn', actionLabel = 'Anomalie modifiée', resolutionPhotoFile = null } = {}) {
   const at = isoNow();
   const historyEvent = { type: patch.status ? 'status' : 'update', label: actionLabel, at, actor };
 
@@ -229,7 +223,7 @@ export async function updateAnomaly(id, patch, { actor = 'Responsable Infra', ac
   await fsMod.updateDoc(fsMod.doc(db, 'anomalies', id), finalPatch);
 }
 
-export async function deleteAnomaly(id, actor = 'Responsable Infra') {
+export async function deleteAnomaly(id, actor = 'infra_lvn') {
   if (APP_MODE === 'demo') {
     setDemoData(getDemoData().filter((x) => x.id !== id));
     return;

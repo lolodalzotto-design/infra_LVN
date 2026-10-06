@@ -24,14 +24,12 @@
       <div class="login-card">
         <h2>Accès responsable Infra</h2>
         <p class="help">Cet espace est réservé au service infrastructure.</p>
-        <form id="login-form">
-          <div id="firebase-login-fields">
-            <div class="field" style="margin-bottom:12px"><label for="email">Nom d’utilisateur</label><input id="email" type="text" autocomplete="username" placeholder="infra_lvn" required /></div>
-            <div class="field"><label for="password">Mot de passe</label><input id="password" type="password" autocomplete="current-password" /></div>
-          </div>
-          <button class="primary" type="submit">Accéder au suivi</button>
+        <form id="login-form" novalidate>
+          <div class="field"><label for="username">Nom d’utilisateur</label><input id="username" type="text" autocomplete="username" placeholder="infra_lvn" /></div>
+          <div class="field"><label for="password">Mot de passe</label><input id="password" type="password" autocomplete="current-password" /></div>
+          <p id="login-error" class="login-error hidden" role="alert"></p>
+          <button class="primary" type="submit">Se connecter</button>
         </form>
-        <div id="demo-note" class="demo-box hidden">Mode démo actif : aucun identifiant Firebase n’est encore nécessaire. Indiquez seulement votre nom puis ouvrez le tableau de bord.</div>
       </div>
     </section>
 
