@@ -143,3 +143,10 @@ footer { text-align:center;color:#7a8796;font-size:.72rem;padding:28px 16px 40px
 .incident-room-zoom { height:220px;background:#eef1f4;border:1px solid var(--line);border-radius:14px;overflow:hidden; }
 .incident-room-zoom .plan-svg { width:100%;height:100%; }
 .incident-room-zoom .room-selected rect { fill:rgba(20,70,110,.30);stroke:var(--navy);stroke-width:2.3; }
+
+.dashboard-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:4px 0 22px; }
+.dashboard-heading h1 { margin:0;font-size:clamp(2rem,5vw,3.4rem);line-height:1;font-weight:950;letter-spacing:-.035em;color:var(--navy); }
+@media (max-width:640px) {
+  .dashboard-heading { margin-top:2px;margin-bottom:18px; }
+  .dashboard-heading h1 { font-size:2.35rem; }
+}
