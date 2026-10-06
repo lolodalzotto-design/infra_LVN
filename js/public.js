@@ -1,6 +1,6 @@
 import { PLAN_CONFIG, classifyCategory } from './data.js';
 import { renderPlan } from './ui.js';
-import { createAnomaly, getAppMode, preparePublicSession } from './store.js';
+import { createAnomaly, preparePublicSession } from './store.js';
 
 let selectedBuilding = 'A';
 let selectedRoom = null;
@@ -13,8 +13,7 @@ const els = {
   selectedRoom: document.querySelector('#selected-room-text'),
   description: document.querySelector('#description'),
   categoryPreview: document.querySelector('#category-preview'),
-  submit: document.querySelector('#submit-btn'),
-  mode: document.querySelector('#mode-pill')
+  submit: document.querySelector('#submit-btn')
 };
 
 function toast(message) {
@@ -116,6 +115,4 @@ els.form.addEventListener('submit', async (event) => {
   }
 });
 
-els.mode.textContent = getAppMode() === 'demo' ? 'Mode démo' : 'Firebase actif';
-els.mode.classList.toggle('demo', getAppMode() === 'demo');
 renderBuildingPlans();
