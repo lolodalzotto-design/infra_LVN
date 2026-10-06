@@ -1,4 +1,5 @@
 name: Deploy infra_LVN to GitHub Pages
+# Pages enabled — deploy current Firebase-connected main
 
 on:
   push:
