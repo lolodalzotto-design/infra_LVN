@@ -53,27 +53,24 @@ export const PLAN_CONFIG = {
 };
 
 export const CATEGORY_RULES = [
-  { category: 'Électricité', words: ['prise', 'interrupteur', 'ampoule', 'éclairage', 'lumière', 'luminaire', 'électrique', 'courant', 'disjoncteur', 'câble'] },
-  { category: 'Plomberie / Sanitaire', words: ['robinet', 'fuite', 'lavabo', 'wc', 'toilette', 'chasse', 'abattant', 'douche', 'eau', 'évacuation', 'siphon'] },
-  { category: 'Menuiserie / Serrurerie', words: ['porte', 'poignée', 'serrure', 'clé', 'fenêtre', 'volet', 'gond', 'charnière', 'menuiserie'] },
-  { category: 'Placo / Maçonnerie', words: ['placo', 'mur', 'cloison', 'trou', 'fissure', 'maçonnerie', 'plâtre'] },
-  { category: 'Peinture', words: ['peinture', 'peindre', 'écaille', 'tache', 'revêtement mural'] },
-  { category: 'Mobilier', words: ['chaise', 'table', 'bureau', 'armoire', 'étagère', 'casier', 'mobilier', 'banc'] },
-  { category: 'Sols / Revêtements', words: ['sol', 'carrelage', 'dalle', 'lino', 'parquet', 'plinthe'] },
-  { category: 'Chauffage / Climatisation', words: ['chauffage', 'radiateur', 'clim', 'climatisation', 'ventilation', 'vmc'] },
-  { category: 'Extérieurs', words: ['extérieur', 'portail', 'grillage', 'gouttière', 'toiture', 'façade'] }
+  { category: 'Électrique', words: ['prise', 'interrupteur', 'ampoule', 'éclairage', 'lumière', 'luminaire', 'électrique', 'courant', 'disjoncteur', 'câble'] },
+  { category: 'Menuiserie', words: ['porte', 'poignée', 'serrure', 'clé', 'fenêtre', 'volet', 'gond', 'charnière', 'menuiserie'] },
+  { category: 'Sol', words: ['sol', 'carrelage', 'dalle', 'lino', 'parquet', 'plinthe', 'revêtement'] },
+  { category: 'Mur', words: ['mur', 'cloison', 'placo', 'plâtre', 'fissure', 'trou', 'peinture'] },
+  { category: 'Plafond', words: ['plafond', 'faux plafond', 'dalle plafond'] },
+  { category: 'Plomberie', words: ['robinet', 'fuite', 'lavabo', 'wc', 'toilette', 'chasse', 'abattant', 'douche', 'eau', 'évacuation', 'siphon', 'canalisation'] }
 ];
 
-export const CATEGORIES = [...CATEGORY_RULES.map((r) => r.category), 'Autre'];
+export const CATEGORIES = ['Électrique', 'Menuiserie', 'Sol', 'Mur', 'Plafond', 'Plomberie'];
 
 export function classifyCategory(description = '') {
   const normalized = description.toLocaleLowerCase('fr-FR');
-  let best = { category: 'Autre', score: 0 };
+  let best = { category: '', score: 0 };
   for (const rule of CATEGORY_RULES) {
     const score = rule.words.reduce((sum, word) => sum + (normalized.includes(word) ? 1 : 0), 0);
     if (score > best.score) best = { category: rule.category, score };
   }
-  return best.category;
+  return best.category || '';
 }
 
 export function getRoom(roomId) {
