@@ -1,5 +1,5 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, classifyCategory, getRoom } from './data.js';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js';
+import { CATEGORIES, allRooms, getRoom } from './data.js';
+import { statusBadge, formatDate, escapeHtml } from './ui.js';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra,
   subscribeAnomalies, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
@@ -14,14 +14,13 @@ const INFRA_AUTH_EMAIL = 'lolo.dalzotto@gmail.com';
 const LOGIN_ERROR = 'Identifiant ou mot de passe incorrect.';
 
 let anomalies = [];
-let selectedBuilding = 'A';
 let unsubscribe = null;
 
 const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
-  mode: $('#mode-pill'), plans: $('#infra-plans'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
+  mode: $('#mode-pill'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   add: $('#add-anomaly-btn'), modalRoot: $('#modal-root')
@@ -58,18 +57,6 @@ function renderKpis() {
   els.bar.style.width = `${pct}%`; els.percent.textContent = `${pct} % réalisé`;
 }
 
-function renderPlans() {
-  els.plans.innerHTML = '';
-  Object.entries(PLAN_CONFIG[selectedBuilding].levels).forEach(([levelId, level]) => {
-    const card = document.createElement('article'); card.className = 'plan-card';
-    card.innerHTML = `<h3><span>${escapeHtml(level.label)}</span><span class="plan-note">Rouge = anomalie active</span></h3><div class="plan-canvas"></div>`;
-    renderPlan(card.querySelector('.plan-canvas'), selectedBuilding, levelId, {
-      mode: 'infra', anomalies, onRoomClick: (room) => openRoomModal(room.id)
-    });
-    els.plans.appendChild(card);
-  });
-}
-
 function filteredAnomalies() {
   const s = els.filterStatus.value, c = els.filterCategory.value, b = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
   return anomalies.filter(a => {
@@ -102,7 +89,7 @@ function renderJournal() {
   els.journal.innerHTML = events.map(e => `<div class="history-item"><strong>${escapeHtml(e.label)}</strong> — ${escapeHtml(e.anomaly.roomName || '')}<small>${formatDate(e.at)} • ${escapeHtml(e.actor || 'Infra')}</small></div>`).join('');
 }
 
-function renderAll() { renderKpis(); renderPlans(); renderList(); renderJournal(); }
+function renderAll() { renderKpis(); renderList(); renderJournal(); }
 
 function modal(content) {
   els.modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal">${content}</section></div>`;
@@ -126,15 +113,16 @@ function openCreateModal(preselectedRoomId = '') {
   modal(`<div class="modal-head"><div><h2>Créer une anomalie</h2><div class="help">Création directe par le service Infra</div></div><button class="icon-btn" data-close>×</button></div>
     <form id="create-form"><div class="form-grid">
       <div class="field full"><label>Pièce *</label><select name="roomId" required>${rooms.map(r=>`<option value="${r.id}" ${r.id===preselectedRoomId?'selected':''}>${escapeHtml(r.buildingLabel)} — ${escapeHtml(r.levelLabel)} — ${escapeHtml(r.name)}</option>`).join('')}</select></div>
+      <div class="field full"><label>Catégorie *</label><select name="category" required><option value="">Sélectionner une catégorie</option>${CATEGORIES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></div>
       <div class="field full"><label>Description *</label><textarea name="description" maxlength="240" required placeholder="Décrivez brièvement le problème"></textarea></div>
       <div class="field full"><label>Photo</label><input id="infra-create-photo" type="file" accept="image/*" capture="environment"></div>
       <div class="field full"><label class="urgent-toggle"><input name="urgent" type="checkbox"> <span>🚨 <strong>Urgent</strong></span></label></div>
     </div><div class="submit-row"><button type="button" class="secondary" data-close>Annuler</button><button class="primary" type="submit">Créer</button></div></form>`);
   $('#create-form').addEventListener('submit', async e => {
-    e.preventDefault(); const fd = new FormData(e.currentTarget); const room = getRoom(fd.get('roomId')); const description = String(fd.get('description')).trim();
-    if (!room || !description) return;
+    e.preventDefault(); const fd = new FormData(e.currentTarget); const room = getRoom(fd.get('roomId')); const description = String(fd.get('description')).trim(); const category = String(fd.get('category') || '');
+    if (!room || !description || !CATEGORIES.includes(category)) return;
     try {
-      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:INFRA_OPERATOR, description, category:classifyCategory(description), urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
+      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:INFRA_OPERATOR, description, category, urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
       closeModal(); toast('Anomalie créée.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
@@ -205,11 +193,6 @@ async function init() {
   }
 
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
-  document.querySelectorAll('[data-infra-building]').forEach(btn => btn.addEventListener('click', () => {
-    selectedBuilding = btn.dataset.infraBuilding;
-    document.querySelectorAll('[data-infra-building]').forEach(b => b.classList.toggle('active', b === btn));
-    renderPlans();
-  }));
   [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderList));
   els.filterSearch.addEventListener('input', renderList);
   els.add.addEventListener('click', () => openCreateModal());
