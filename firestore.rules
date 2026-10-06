@@ -6,17 +6,31 @@ service cloud.firestore {
     }
 
     function isAnonymous() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
+    // Sécurité par défaut : remplacer cette valeur par l'adresse e-mail
+    // du compte Infra commun AVANT le passage en production.
     function isInfra() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'A_REMPLACER_EMAIL_INFRA';
     }
 
     function validPublicReport() {
-      return request.resource.data.source == 'public'
+      return request.resource.data.keys().hasOnly([
+          'roomId', 'roomName', 'buildingId', 'levelId',
+          'reporterFirstName', 'reporterLastName',
+          'description', 'category', 'urgent', 'source',
+          'status', 'createdAt', 'updatedAt', 'resolvedAt',
+          'resolutionComment', 'resolutionPhotoUrl',
+          'history', 'photoUrl'
+        ])
+        && request.resource.data.source == 'public'
         && request.resource.data.status == 'a_traiter'
         && request.resource.data.roomId is string
+        && request.resource.data.roomName is string
         && request.resource.data.buildingId in ['A', 'B']
         && request.resource.data.levelId in ['RDC', 'R1']
         && request.resource.data.reporterFirstName is string
@@ -29,15 +43,18 @@ service cloud.firestore {
         && request.resource.data.description.size() > 0
         && request.resource.data.description.size() <= 240
         && request.resource.data.category is string
-        && request.resource.data.urgent is bool;
+        && request.resource.data.urgent is bool
+        && request.resource.data.resolvedAt == null
+        && request.resource.data.resolutionComment == ''
+        && request.resource.data.resolutionPhotoUrl == null;
     }
 
     match /anomalies/{anomalyId} {
-      // L'agent terrain est connecté anonymement de façon invisible.
-      // Il peut uniquement créer un signalement et ne peut ni lire ni modifier la base.
+      // L'agent terrain est authentifié anonymement de façon invisible.
+      // Il peut uniquement créer son signalement.
       allow create: if (isAnonymous() && validPublicReport()) || isInfra();
 
-      // L'espace Infra nécessite un compte Firebase Email/Mot de passe.
+      // Lecture et gestion réservées au compte Infra commun.
       allow read, update, delete: if isInfra();
     }
   }
