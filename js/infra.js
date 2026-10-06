@@ -175,7 +175,9 @@ async function init() {
   els.loginForm.addEventListener('submit', async e => {
     e.preventDefault(); actorName = els.actor.value.trim(); if (!actorName) return toast('Indiquez votre nom / prénom.');
     sessionStorage.setItem('infra_LVN_actor', actorName);
-    try { await loginInfra(els.email.value.trim(), els.password.value); openShell(); } catch(err) { toast('Connexion impossible : ' + (err.message || 'identifiants invalides')); }
+    try { const identifier = els.email.value.trim();
+    const firebaseEmail = identifier.toLowerCase() === 'infra_lvn' ? 'lolo.dalzotto@gmail.com' : identifier;
+    await loginInfra(firebaseEmail, els.password.value); openShell(); } catch(err) { toast('Connexion impossible : ' + (err.message || 'identifiants invalides')); }
   });
 
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
