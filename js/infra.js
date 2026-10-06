@@ -174,7 +174,6 @@ async function init() {
   fillCategories();
   const demo = getAppMode() === 'demo';
   els.mode.textContent = demo ? 'Mode démo' : 'Firebase actif'; els.mode.classList.toggle('demo', demo);
-  if (await hasInfraSession()) openShell();
 
   els.loginForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -198,6 +197,12 @@ async function init() {
       submitBtn.disabled = false;
     }
   });
+
+  try {
+    if (await hasInfraSession()) openShell();
+  } catch {
+    // Le formulaire reste disponible si le contrôle de session échoue.
+  }
 
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
   document.querySelectorAll('[data-infra-building]').forEach(btn => btn.addEventListener('click', () => {

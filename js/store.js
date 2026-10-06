@@ -108,8 +108,8 @@ export async function logoutInfra() {
 
 export async function hasInfraSession() {
   if (APP_MODE === 'demo') return localStorage.getItem(DEMO_SESSION_KEY) === '1';
-  const { auth, authMod } = await getFirebase();
-  await authMod.authStateReady();
+  const { auth } = await getFirebase();
+  await auth.authStateReady();
   return !!auth.currentUser && !auth.currentUser.isAnonymous;
 }
 
