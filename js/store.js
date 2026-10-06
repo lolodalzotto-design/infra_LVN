@@ -66,10 +66,10 @@ function setDemoData(data) {
 async function getFirebase() {
   if (firebaseCtx) return firebaseCtx;
   const [appMod, authMod, fsMod, storageMod] = await Promise.all([
-    import('https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js'),
-    import('https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js'),
-    import('https://www.gstatic.com/firebasejs/11.4.0/firebase-storage.js')
+    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js'),
+    import('https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js')
   ]);
   const app = appMod.initializeApp(firebaseConfig);
   firebaseCtx = {
