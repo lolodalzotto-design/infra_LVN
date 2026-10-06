@@ -1,5 +1,5 @@
-import { CATEGORIES, allRooms, getRoom } from './data.js';
-import { statusBadge, formatDate, escapeHtml } from './ui.js';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra,
   subscribeAnomalies, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
@@ -23,7 +23,7 @@ const els = {
   mode: $('#mode-pill'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
-  add: $('#add-anomaly-btn'), modalRoot: $('#modal-root')
+  modalRoot: $('#modal-root')
 };
 
 function toast(message) {
@@ -131,7 +131,9 @@ function openCreateModal(preselectedRoomId = '') {
 function openAnomalyModal(id) {
   const a = anomalies.find(x => x.id === id); if (!a) return;
   const room = getRoom(a.roomId);
+  const level = room ? PLAN_CONFIG[room.buildingId]?.levels?.[room.levelId] : null;
   modal(`<div class="modal-head"><div><h2>${a.urgent?'🚨 ':''}${escapeHtml(a.description)}</h2><div class="help">${escapeHtml(room?.buildingLabel || '')} • ${escapeHtml(room?.levelLabel || '')} • ${escapeHtml(a.roomName || '')}</div></div><button class="icon-btn" data-close>×</button></div>
+    ${room && level ? '<div class="incident-room-zoom-wrap"><div class="incident-room-zoom-title">Pièce concernée</div><div id="incident-room-zoom" class="incident-room-zoom"></div></div>' : ''}
     <div class="detail-grid"><div class="detail-item"><strong>Signalé par</strong>${escapeHtml(`${a.reporterFirstName||''} ${a.reporterLastName||''}`.trim() || 'Service Infra')}</div><div class="detail-item"><strong>Date</strong>${formatDate(a.createdAt)}</div><div class="detail-item"><strong>Catégorie</strong>${escapeHtml(a.category || 'Autre')}</div><div class="detail-item"><strong>Statut</strong>${statusBadge(a.status)}</div></div>
     <form id="update-form"><div class="form-grid">
       <div class="field"><label>Statut</label><select name="status"><option value="a_traiter" ${a.status==='a_traiter'?'selected':''}>À traiter</option><option value="en_cours" ${a.status==='en_cours'?'selected':''}>En cours</option><option value="resolu" ${a.status==='resolu'?'selected':''}>Résolu</option></select></div>
@@ -143,6 +145,27 @@ function openAnomalyModal(id) {
     </div>
     <div class="submit-row"><button type="button" class="danger" id="delete-anomaly">Supprimer erreur</button><button class="primary" type="submit">Enregistrer</button></div></form>
     <h3 style="margin-top:20px">Historique de cette anomalie</h3><div class="history">${(a.history||[]).slice().reverse().map(h=>`<div class="history-item"><strong>${escapeHtml(h.label)}</strong><small>${formatDate(h.at)} • ${escapeHtml(h.actor||'Infra')}</small></div>`).join('') || '<div class="help">Aucun historique.</div>'}</div>`);
+
+  if (room && level) {
+    const zoom = $('#incident-room-zoom');
+    renderPlan(zoom, room.buildingId, room.levelId, {
+      mode: 'infra',
+      anomalies: [a],
+      selectedRoomId: room.id,
+      onRoomClick: () => {}
+    });
+    const svg = zoom?.querySelector('svg');
+    if (svg) {
+      const padX = Math.max(4, room.w * 0.22);
+      const padY = Math.max(4, room.h * 0.22);
+      const x = Math.max(0, room.x - padX);
+      const y = Math.max(0, room.y - padY);
+      const w = Math.min(100 - x, room.w + padX * 2);
+      const h = Math.min(100 - y, room.h + padY * 2);
+      svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    }
+  }
 
   $('#update-form').addEventListener('submit', async e => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const status = fd.get('status');
@@ -195,7 +218,6 @@ async function init() {
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
   [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderList));
   els.filterSearch.addEventListener('input', renderList);
-  els.add.addEventListener('click', () => openCreateModal());
 
   if (demo) {
     window.addEventListener('keydown', e => {
