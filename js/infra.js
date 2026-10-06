@@ -20,7 +20,7 @@ const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
-  mode: $('#mode-pill'), list: $('#anomaly-list'), listCount: $('#list-count'),
+  list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   modalRoot: $('#modal-root')
@@ -178,7 +178,6 @@ function openAnomalyModal(id) {
 async function init() {
   fillCategories();
   const demo = getAppMode() === 'demo';
-  els.mode.textContent = demo ? 'Mode démo' : 'Firebase actif'; els.mode.classList.toggle('demo', demo);
 
   els.loginForm.addEventListener('submit', async e => {
     e.preventDefault();
