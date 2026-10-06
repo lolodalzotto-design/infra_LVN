@@ -7,13 +7,13 @@ import {
 
 let anomalies = [];
 let selectedBuilding = 'A';
-let actorName = sessionStorage.getItem('infra_LVN_actor') || '';
+let actorName = 'infra_lvn';
 let unsubscribe = null;
 
 const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
-  actor: $('#actorName'), email: $('#email'), password: $('#password'), firebaseFields: $('#firebase-login-fields'), demoNote: $('#demo-note'),
+  email: $('#email'), password: $('#password'), firebaseFields: $('#firebase-login-fields'), demoNote: $('#demo-note'),
   mode: $('#mode-pill'), plans: $('#infra-plans'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
@@ -168,13 +168,10 @@ async function init() {
   const demo = getAppMode() === 'demo';
   els.mode.textContent = demo ? 'Mode démo' : 'Firebase actif'; els.mode.classList.toggle('demo', demo);
   els.demoNote.classList.toggle('hidden', !demo); els.firebaseFields.classList.toggle('hidden', demo);
-  els.actor.value = actorName;
-
   if (await hasInfraSession()) openShell();
 
   els.loginForm.addEventListener('submit', async e => {
-    e.preventDefault(); actorName = els.actor.value.trim(); if (!actorName) return toast('Indiquez votre nom / prénom.');
-    sessionStorage.setItem('infra_LVN_actor', actorName);
+    e.preventDefault(); actorName = 'infra_lvn';
     try { const identifier = els.email.value.trim();
     const firebaseEmail = identifier.toLowerCase() === 'infra_lvn' ? 'lolo.dalzotto@gmail.com' : identifier;
     await loginInfra(firebaseEmail, els.password.value); openShell(); } catch(err) { toast('Connexion impossible : ' + (err.message || 'identifiants invalides')); }
