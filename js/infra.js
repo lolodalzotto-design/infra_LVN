@@ -20,7 +20,7 @@ const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
-  mode: $('#mode-pill'), list: $('#anomaly-list'), listCount: $('#list-count'), journal: $('#journal-list'),
+  mode: $('#mode-pill'), list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   modalRoot: $('#modal-root')
@@ -83,13 +83,7 @@ function renderList() {
   els.list.querySelectorAll('.view-anomaly').forEach(btn => btn.addEventListener('click', () => openAnomalyModal(btn.closest('[data-anomaly-id]').dataset.anomalyId)));
 }
 
-function renderJournal() {
-  const events = anomalies.flatMap(a => (a.history || []).map(h => ({...h, anomaly:a}))).sort((a,b) => new Date(b.at) - new Date(a.at)).slice(0,40);
-  if (!events.length) { els.journal.innerHTML = '<div class="empty">Aucun événement.</div>'; return; }
-  els.journal.innerHTML = events.map(e => `<div class="history-item"><strong>${escapeHtml(e.label)}</strong> — ${escapeHtml(e.anomaly.roomName || '')}<small>${formatDate(e.at)} • ${escapeHtml(e.actor || 'Infra')}</small></div>`).join('');
-}
-
-function renderAll() { renderKpis(); renderList(); renderJournal(); }
+function renderAll() { renderKpis(); renderList(); }
 
 function modal(content) {
   els.modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal">${content}</section></div>`;
