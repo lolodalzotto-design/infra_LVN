@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d223a" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>Espace Infra — LVN</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark">LVN</div>
+        <div><h1>Espace Infrastructure</h1><p>Suivi des anomalies • Caserne LVN</p></div>
+      </div>
+      <button id="logout-btn" class="header-action hidden" type="button">Déconnexion</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="login-wrap" class="login-wrap">
+      <div class="login-card">
+        <h2>Accès responsable Infra</h2>
+        <p class="help">Cet espace est réservé au service infrastructure.</p>
+        <form id="login-form">
+          <div class="field"><label for="actorName">Votre nom / prénom *</label><input id="actorName" required placeholder="Ex. : Jean Dupont" /></div>
+          <div id="firebase-login-fields">
+            <div class="field" style="margin-bottom:12px"><label for="email">Identifiant</label><input id="email" type="email" autocomplete="username" /></div>
+            <div class="field"><label for="password">Mot de passe</label><input id="password" type="password" autocomplete="current-password" /></div>
+          </div>
+          <button class="primary" type="submit">Accéder au suivi</button>
+        </form>
+        <div id="demo-note" class="demo-box hidden">Mode démo actif : aucun identifiant Firebase n’est encore nécessaire. Indiquez seulement votre nom puis ouvrez le tableau de bord.</div>
+      </div>
+    </section>
+
+    <section id="infra-shell" class="infra-shell">
+      <div class="hero">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div><h2>Tableau de bord</h2><p>Une pièce est rouge si elle possède au moins une anomalie « À traiter » ou « En cours ». Sinon elle est verte.</p></div>
+          <span id="mode-pill" class="mode-pill"></span>
+        </div>
+      </div>
+
+      <section class="dashboard-grid">
+        <article class="kpi"><div class="label">Anomalies totales</div><div id="kpi-total" class="value">0</div></article>
+        <article class="kpi"><div class="label">À traiter</div><div id="kpi-open" class="value">0</div></article>
+        <article class="kpi"><div class="label">En cours</div><div id="kpi-progress" class="value">0</div></article>
+        <article class="kpi"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % réalisé</div></article>
+      </section>
+
+      <div class="toolbar">
+        <select id="filter-status"><option value="all">Tous les statuts</option><option value="active">Actives uniquement</option><option value="a_traiter">À traiter</option><option value="en_cours">En cours</option><option value="resolu">Résolues</option></select>
+        <select id="filter-category"><option value="all">Toutes les catégories</option></select>
+        <select id="filter-building"><option value="all">Tous les bâtiments</option><option value="A">Bâtiment A</option><option value="B">Bâtiment B</option></select>
+        <input id="filter-search" type="search" placeholder="Rechercher…" />
+        <span class="spacer"></span>
+        <button id="add-anomaly-btn" class="primary" type="button">+ Créer une anomalie</button>
+      </div>
+
+      <section class="section-grid">
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
+            <h2 style="margin:0">Carte de suivi</h2>
+            <div class="segmented" style="width:240px">
+              <button type="button" class="segment-btn active" data-infra-building="A">Bât. A</button>
+              <button type="button" class="segment-btn" data-infra-building="B">Bât. B</button>
+            </div>
+          </div>
+          <div id="infra-plans" class="infra-plans"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Liste des anomalies <span id="list-count" class="help"></span></h2>
+          <div id="anomaly-list" class="anomaly-list"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:16px">
+        <h2>Main courante</h2>
+        <div id="journal-list" class="history"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>infra_LVN • V0 — les plans réels remplaceront les plans provisoires</footer>
+  <div id="modal-root"></div>
+  <script type="module" src="./js/infra.js"></script>
+</body>
+</html>

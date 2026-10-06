@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isInfra() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function validImage() {
+      return request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /reports/{uid}/{fileName} {
+      // Chaque agent anonyme ne peut déposer/lire que sa propre photo.
+      allow create: if signedIn() && request.auth.uid == uid && validImage();
+      allow read: if (signedIn() && request.auth.uid == uid) || isInfra();
+      allow update, delete: if isInfra();
+    }
+
+    match /resolutions/{uid}/{fileName} {
+      allow read, create, update, delete: if isInfra() && validImage();
+    }
+  }
+}
