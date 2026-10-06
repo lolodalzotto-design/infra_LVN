@@ -36,7 +36,7 @@
     <section id="infra-shell" class="infra-shell">
       <div class="hero">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div><h2>Tableau de bord</h2><p>Une pièce est rouge si elle possède au moins une anomalie « À traiter » ou « En cours ». Sinon elle est verte.</p></div>
+          <div><h2>Tableau de bord</h2><p>Suivi et gestion des anomalies de la caserne LVN.</p></div>
           <span id="mode-pill" class="mode-pill"></span>
         </div>
       </div>
@@ -57,22 +57,9 @@
         <button id="add-anomaly-btn" class="primary" type="button">+ Créer une anomalie</button>
       </div>
 
-      <section class="section-grid">
-        <div class="panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
-            <h2 style="margin:0">Carte de suivi</h2>
-            <div class="segmented" style="width:240px">
-              <button type="button" class="segment-btn active" data-infra-building="A">Bât. A</button>
-              <button type="button" class="segment-btn" data-infra-building="B">Bât. B</button>
-            </div>
-          </div>
-          <div id="infra-plans" class="infra-plans"></div>
-        </div>
-
-        <div class="panel">
-          <h2>Liste des anomalies <span id="list-count" class="help"></span></h2>
-          <div id="anomaly-list" class="anomaly-list"></div>
-        </div>
+      <section class="panel">
+        <h2>Liste des anomalies <span id="list-count" class="help"></span></h2>
+        <div id="anomaly-list" class="anomaly-list"></div>
       </section>
 
       <section class="panel" style="margin-top:16px">
@@ -82,7 +69,7 @@
     </section>
   </main>
 
-  <footer>infra_LVN • V0 — les plans réels remplaceront les plans provisoires</footer>
+  <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
   <script type="module" src="./js/infra.js"></script>
 </body>
