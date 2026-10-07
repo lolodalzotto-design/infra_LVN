@@ -183,6 +183,14 @@ function renderPlanVisualizer() {
   els.planTitle.textContent = [building.label, planOptionLabelLevel(levelId, level), zone.label].filter(Boolean).join(' • ');
   els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} sur ce plan`;
 
+  // Même fenêtre d'affichage que sur le formulaire Agent :
+  // le ratio suit directement le viewBox du plan sélectionné.
+  const vb = zone.viewBox || { width: 100, height: 100 };
+  const vectorPlanActive = String(zone.planImage || '').includes('.svg');
+  els.selectedPlan.style.aspectRatio = `${vb.width} / ${vb.height}`;
+  els.selectedPlan.style.minHeight = '0';
+  els.selectedPlan.classList.toggle('plan-vector-transparent', vectorPlanActive);
+
   renderPlan(els.selectedPlan, buildingId, levelId, {
     zoneId: Object.entries(level.zones).find(([, value]) => value === zone)?.[0] || zoneId,
     mode: 'infra',
