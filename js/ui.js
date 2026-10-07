@@ -491,7 +491,7 @@ export function renderPlan(container, buildingId, levelId, {
       shape.setAttribute('y', room.y * scaleY);
       shape.setAttribute('width', room.w);
       shape.setAttribute('height', room.h * scaleY);
-      shape.setAttribute('rx', '0.6');
+      shape.setAttribute('rx', zone.planImage ? '0' : '0.6');
     }
     shape.classList.add('plan-shape');
 
