@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-2';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-2';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-planviz-1';
+} from './store.js?v=20261007-planviz-2';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -182,6 +182,14 @@ function renderPlanVisualizer() {
 
   els.planTitle.textContent = [building.label, planOptionLabelLevel(levelId, level), zone.label].filter(Boolean).join(' • ');
   els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} sur ce plan`;
+
+  // Même fenêtre d'affichage que sur le formulaire Agent :
+  // le ratio suit directement le viewBox du plan sélectionné.
+  const vb = zone.viewBox || { width: 100, height: 100 };
+  const vectorPlanActive = String(zone.planImage || '').includes('.svg');
+  els.selectedPlan.style.aspectRatio = `${vb.width} / ${vb.height}`;
+  els.selectedPlan.style.minHeight = '0';
+  els.selectedPlan.classList.toggle('plan-vector-transparent', vectorPlanActive);
 
   renderPlan(els.selectedPlan, buildingId, levelId, {
     zoneId: Object.entries(level.zones).find(([, value]) => value === zone)?.[0] || zoneId,

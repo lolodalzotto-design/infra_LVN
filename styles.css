@@ -583,11 +583,9 @@ body.plan-fullscreen-body { overflow:hidden; }
 }
 .plan-visualizer-canvas {
   width:100%;
-  min-height:460px;
-  aspect-ratio:1.65 / 1;
   background:#eef1f4;
   border:1px solid #d9dfe6;
-  border-radius:14px;
+  border-radius:12px;
   overflow:hidden;
 }
 .plan-visualizer-canvas .plan-svg {
@@ -597,5 +595,5 @@ body.plan-fullscreen-body { overflow:hidden; }
 @media (max-width:760px) {
   .plan-picker { grid-template-columns:1fr; }
   .plan-visualizer-meta { align-items:flex-start;flex-direction:column;gap:3px; }
-  .plan-visualizer-canvas { min-height:420px;aspect-ratio:auto; }
+  .plan-visualizer-canvas { width:100%; }
 }
