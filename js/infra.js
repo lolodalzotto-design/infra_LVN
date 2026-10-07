@@ -1,9 +1,9 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-1045';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-1045';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-1055';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-1055';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-1045';
+} from './store.js?v=20261007-1055';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
