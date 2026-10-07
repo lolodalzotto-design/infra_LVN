@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d223a" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Espace Infra — LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261007-dashboard-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261007-command-1" />
 </head>
 <body>
 <main>
@@ -43,12 +43,37 @@
         <article class="kpi kpi-resolved"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % réalisé</div></article>
       </section>
 
+      <section class="quick-filters admin-overview" aria-label="Filtres rapides">
+        <button class="quick-filter active" type="button" data-quick-filter="all">Tout <strong id="quick-all">0</strong></button>
+        <button class="quick-filter quick-urgent" type="button" data-quick-filter="urgent">Urgent <strong id="quick-urgent">0</strong></button>
+        <button class="quick-filter quick-red" type="button" data-quick-filter="a_traiter">À traiter <strong id="quick-open">0</strong></button>
+        <button class="quick-filter quick-orange" type="button" data-quick-filter="en_cours">En cours <strong id="quick-progress">0</strong></button>
+        <button class="quick-filter quick-green" type="button" data-quick-filter="resolu">Résolues <strong id="quick-resolved">0</strong></button>
+      </section>
+
       <div class="toolbar">
         <select id="filter-status"><option value="all">Tous les statuts</option><option value="active">Actives uniquement</option><option value="a_traiter">À traiter</option><option value="en_cours">En cours</option><option value="resolu">Résolues</option></select>
         <select id="filter-category"><option value="all">Toutes les catégories</option></select>
         <select id="filter-building"><option value="all">Tous les bâtiments</option><option value="A">Bâtiment A</option><option value="B">Bâtiment B</option></select>
         <input id="filter-search" type="search" placeholder="Rechercher…" />
       </div>
+
+      <section class="priority-grid admin-overview">
+        <article class="panel priority-panel urgent-panel">
+          <div class="panel-heading">
+            <div><h2>Urgences</h2><div class="help">Anomalies urgentes encore actives</div></div>
+            <span id="urgent-count" class="priority-count">0</span>
+          </div>
+          <div id="urgent-list" class="priority-list"></div>
+        </article>
+
+        <article class="panel priority-panel watch-panel">
+          <div class="panel-heading">
+            <div><h2>Zones à surveiller</h2><div class="help">Pièces avec le plus d’anomalies actives</div></div>
+          </div>
+          <div id="watch-zones" class="watch-zones"></div>
+        </article>
+      </section>
 
       <section class="overview-grid admin-overview">
         <article class="panel overview-chart-panel">
@@ -96,6 +121,6 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261007-dashboard-1"></script>
+  <script type="module" src="./js/infra.js?v=20261007-command-1"></script>
 </body>
 </html>

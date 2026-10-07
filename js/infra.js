@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-dashboard-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-dashboard-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-command-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-command-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-dashboard-1';
+} from './store.js?v=20261007-command-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -19,6 +19,7 @@ let anomalies = [];
 let unsubscribe = null;
 let profileUnsubscribe = null;
 let currentUser = null;
+let quickFilter = 'all';
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -30,6 +31,8 @@ const els = {
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   statusChart: $('#status-chart'), overviewStats: $('#overview-stats'), overviewFilterNote: $('#overview-filter-note'), globalPlans: $('#global-plans'),
+  urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'), watchZones: $('#watch-zones'),
+  quickAll: $('#quick-all'), quickUrgent: $('#quick-urgent'), quickOpen: $('#quick-open'), quickProgress: $('#quick-progress'), quickResolved: $('#quick-resolved'),
   modalRoot: $('#modal-root')
 };
 
@@ -83,6 +86,8 @@ function renderKpis(rows = filteredAnomalies()) {
 function filteredAnomalies() {
   const status = els.filterStatus.value, category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
   return anomalies.filter(a => {
+    if (quickFilter === 'urgent' && !(a.urgent && a.status !== 'resolu')) return false;
+    if (['a_traiter','en_cours','resolu'].includes(quickFilter) && a.status !== quickFilter) return false;
     if (status === 'active' && a.status === 'resolu') return false;
     if (!['all','active'].includes(status) && a.status !== status) return false;
     if (category !== 'all' && a.category !== category) return false;
@@ -92,9 +97,82 @@ function filteredAnomalies() {
   });
 }
 
+function baseFilteredAnomalies() {
+  const category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
+  return anomalies.filter(a => {
+    if (category !== 'all' && a.category !== category) return false;
+    if (building !== 'all' && a.buildingId !== building) return false;
+    if (q && !`${a.description} ${a.roomName} ${a.reporterFirstName} ${a.reporterLastName} ${a.category}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function anomalyAgeDays(value) {
+  if (!value) return 0;
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+}
+
+function renderQuickFilters() {
+  const rows = baseFilteredAnomalies();
+  els.quickAll.textContent = rows.length;
+  els.quickUrgent.textContent = rows.filter(a => a.urgent && a.status !== 'resolu').length;
+  els.quickOpen.textContent = rows.filter(a => a.status === 'a_traiter').length;
+  els.quickProgress.textContent = rows.filter(a => a.status === 'en_cours').length;
+  els.quickResolved.textContent = rows.filter(a => a.status === 'resolu').length;
+  document.querySelectorAll('[data-quick-filter]').forEach(button => {
+    button.classList.toggle('active', button.dataset.quickFilter === quickFilter);
+  });
+}
+
+function renderPriorityPanels(rows) {
+  const activeRows = rows.filter(a => a.status !== 'resolu');
+  const urgentRows = activeRows.filter(a => a.urgent).slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  els.urgentCount.textContent = urgentRows.length;
+  els.urgentList.innerHTML = urgentRows.length ? urgentRows.slice(0,5).map(a => {
+    const room = getRoom(a.roomId);
+    const age = anomalyAgeDays(a.createdAt);
+    return `<button class="priority-item" type="button" data-priority-id="${escapeHtml(a.id)}">
+      <span class="priority-main"><strong>🚨 ${escapeHtml(a.description)}</strong><small>${escapeHtml(room?.buildingLabel || a.buildingId || '')} · ${escapeHtml(room?.levelLabel || a.levelId || '')} · ${escapeHtml(a.roomName || room?.name || '')}</small></span>
+      <span class="priority-age">${age} j</span>
+    </button>`;
+  }).join('') : '<div class="priority-empty">Aucune urgence active.</div>';
+
+  const byRoom = new Map();
+  activeRows.forEach(a => {
+    if (!a.roomId) return;
+    const current = byRoom.get(a.roomId) || { count:0, urgent:0, open:0, progress:0, oldest:0 };
+    current.count += 1;
+    if (a.urgent) current.urgent += 1;
+    if (a.status === 'a_traiter') current.open += 1;
+    if (a.status === 'en_cours') current.progress += 1;
+    current.oldest = Math.max(current.oldest, anomalyAgeDays(a.createdAt));
+    byRoom.set(a.roomId, current);
+  });
+
+  const watched = [...byRoom.entries()].map(([roomId, stats]) => {
+    const room = getRoom(roomId);
+    const score = stats.open * 3 + stats.progress * 2 + stats.urgent * 4 + Math.min(stats.oldest, 10) / 5;
+    return { roomId, room, stats, score };
+  }).sort((a,b) => b.score - a.score).slice(0,5);
+
+  els.watchZones.innerHTML = watched.length ? watched.map((item,index) => `<button class="watch-zone" type="button" data-watch-room="${escapeHtml(item.roomId)}">
+    <span class="watch-rank">${index + 1}</span>
+    <span class="watch-main"><strong>${escapeHtml(item.room?.name || 'Pièce')}</strong><small>${escapeHtml(item.room?.buildingLabel || '')} · ${escapeHtml(item.room?.levelLabel || '')}</small></span>
+    <span class="watch-count">${item.stats.count}</span>
+  </button>`).join('') : '<div class="priority-empty">Aucune zone active à surveiller.</div>';
+
+  els.urgentList.querySelectorAll('[data-priority-id]').forEach(button => button.addEventListener('click', () => openAnomalyModal(button.dataset.priorityId)));
+  els.watchZones.querySelectorAll('[data-watch-room]').forEach(button => button.addEventListener('click', () => openOverviewRoom(button.dataset.watchRoom)));
+}
+
 function currentFilterLabel() {
   const parts = [];
-  const statusText = els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
+  const quickLabels = { urgent:'Urgent', a_traiter:'À traiter', en_cours:'En cours', resolu:'Résolues' };
+  const statusText = quickFilter !== 'all'
+    ? quickLabels[quickFilter]
+    : els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
   const categoryText = els.filterCategory.options[els.filterCategory.selectedIndex]?.textContent;
   const buildingText = els.filterBuilding.options[els.filterBuilding.selectedIndex]?.textContent;
   if (buildingText) parts.push(buildingText);
@@ -226,8 +304,12 @@ function renderList(rows = filteredAnomalies()) {
   if (!rows.length) { els.list.innerHTML = '<div class="empty">Aucune anomalie pour ces filtres.</div>'; return; }
   els.list.innerHTML = rows.map(a => {
     const room = getRoom(a.roomId);
+    const age = anomalyAgeDays(a.createdAt);
+    const ageBadge = a.status !== 'resolu' && age >= 3
+      ? `<span class="age-badge ${age >= 7 ? 'late' : 'watch'}">${age} j</span>`
+      : '';
     return `<article class="anomaly-card ${a.urgent ? 'urgent' : ''}" data-anomaly-id="${escapeHtml(a.id)}">
-      <div class="anomaly-top"><div><div class="anomaly-title">${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description)}</div><div class="anomaly-meta"><span>${escapeHtml(room?.buildingLabel || a.buildingId || '')}</span><span>${escapeHtml(room?.levelLabel || a.levelId || '')}</span><span>${escapeHtml(a.roomName || room?.name || '')}</span><span>${escapeHtml(a.category || 'Autre')}</span></div></div>${statusBadge(a.status)}</div>
+      <div class="anomaly-top"><div><div class="anomaly-title">${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description)}</div><div class="anomaly-meta"><span>${escapeHtml(room?.buildingLabel || a.buildingId || '')}</span><span>${escapeHtml(room?.levelLabel || a.levelId || '')}</span><span>${escapeHtml(a.roomName || room?.name || '')}</span><span>${escapeHtml(a.category || 'Autre')}</span>${ageBadge}</div></div>${statusBadge(a.status)}</div>
       <div class="anomaly-actions"><span class="help">${formatDate(a.createdAt)} • ${escapeHtml(`${a.reporterFirstName || ''} ${a.reporterLastName || ''}`.trim() || 'Infra')}</span><button class="secondary view-anomaly" type="button">Ouvrir</button></div>
     </article>`;
   }).join('');
@@ -238,6 +320,8 @@ function renderAll() {
   const rows = filteredAnomalies();
   renderKpis(rows);
   if (currentUser?.isAdmin) {
+    renderQuickFilters();
+    renderPriorityPanels(rows);
     renderStatusChart(rows);
     renderOverviewStats(rows);
     renderGlobalPlans(rows);
@@ -542,8 +626,18 @@ async function init() {
   els.changePassword.addEventListener('click', openChangePasswordModal);
   els.manageUsers.addEventListener('click', openUsersModal);
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
-  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
+  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', () => {
+    if (x === els.filterStatus) quickFilter = 'all';
+    renderAll();
+  }));
   els.filterSearch.addEventListener('input', renderAll);
+  document.querySelectorAll('[data-quick-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+      quickFilter = button.dataset.quickFilter || 'all';
+      els.filterStatus.value = 'all';
+      renderAll();
+    });
+  });
 
   if (demo) {
     window.addEventListener('keydown', e => {
