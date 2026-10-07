@@ -19,17 +19,59 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Authenticate to Google Cloud
-        id: auth
+      - name: Load Google service account
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          token_format: access_token
-          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+
+      - name: Create OAuth access token
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const credentials = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
+          const b64url = (value) => Buffer.from(value).toString('base64url');
+          const now = Math.floor(Date.now() / 1000);
+
+          const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+          const payload = b64url(JSON.stringify({
+            iss: credentials.client_email,
+            scope: 'https://www.googleapis.com/auth/cloud-platform',
+            aud: 'https://oauth2.googleapis.com/token',
+            iat: now,
+            exp: now + 3600
+          }));
+
+          const unsigned = `${header}.${payload}`;
+          const signature = crypto.sign('RSA-SHA256', Buffer.from(unsigned), credentials.private_key).toString('base64url');
+          const assertion = `${unsigned}.${signature}`;
+
+          fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+              assertion
+            })
+          })
+            .then(async (response) => {
+              const body = await response.json();
+              if (!response.ok || !body.access_token) {
+                throw new Error(JSON.stringify(body));
+              }
+              console.log(`::add-mask::${body.access_token}`);
+              fs.appendFileSync(process.env.GITHUB_ENV, `ACCESS_TOKEN=${body.access_token}\n`);
+            })
+            .catch((error) => {
+              console.error(error.message);
+              process.exit(1);
+            });
+          NODE
 
       - name: Deploy Firestore and Storage rules via Firebase Rules API
         env:
-          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PROJECT_ID: infra-lvn-9f349
           STORAGE_BUCKET: infra-lvn-9f349.firebasestorage.app
         run: |
