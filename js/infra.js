@@ -46,6 +46,7 @@ async function openShell(profile = null) {
   els.logout.classList.remove('hidden');
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
+  document.querySelectorAll('.admin-overview').forEach(node => node.classList.toggle('hidden', !currentUser.isAdmin));
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
   if (!profileUnsubscribe) {
     profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
@@ -189,9 +190,11 @@ function renderList(rows = filteredAnomalies()) {
 function renderAll() {
   const rows = filteredAnomalies();
   renderKpis(rows);
-  renderStatusChart(rows);
-  renderOverviewStats(rows);
-  renderGlobalPlans(rows);
+  if (currentUser?.isAdmin) {
+    renderStatusChart(rows);
+    renderOverviewStats(rows);
+    renderGlobalPlans(rows);
+  }
   renderList(rows);
 }
 
