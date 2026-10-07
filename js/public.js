@@ -3,10 +3,15 @@ import { renderPlan } from './ui.js';
 import { createAnomaly, preparePublicSession } from './store.js';
 
 let selectedBuilding = 'A';
+let selectedLevel = 'RDC';
+let selectedZone = 'caserne';
 let selectedRoom = null;
 
 const els = {
   buildingButtons: [...document.querySelectorAll('[data-building]')],
+  levelButtons: document.querySelector('#level-buttons'),
+  zoneWrap: document.querySelector('#zone-wrap'),
+  zoneButtons: document.querySelector('#zone-buttons'),
   plans: document.querySelector('#plans'),
   formCard: document.querySelector('#report-card'),
   form: document.querySelector('#report-form'),
@@ -24,48 +29,139 @@ function toast(message) {
   setTimeout(() => node.remove(), 3400);
 }
 
-function renderBuildingPlans() {
-  els.plans.innerHTML = '';
-  const building = PLAN_CONFIG[selectedBuilding];
-  Object.entries(building.levels).forEach(([levelId, level]) => {
-    const card = document.createElement('article');
-    card.className = 'plan-card';
-    card.innerHTML = `
-      <h3><span>${level.label}</span><span class="plan-note">Touchez une pièce</span></h3>
-      <div class="plan-canvas"></div>
-    `;
-    const canvas = card.querySelector('.plan-canvas');
-    renderPlan(canvas, selectedBuilding, levelId, {
-      mode: 'public',
-      selectedRoomId: selectedRoom?.id,
-      onRoomClick: (room) => selectRoom(room, levelId)
+function currentBuilding() {
+  return PLAN_CONFIG[selectedBuilding];
+}
+
+function currentLevel() {
+  return currentBuilding()?.levels?.[selectedLevel];
+}
+
+function availableZones() {
+  return Object.entries(currentLevel()?.zones || {});
+}
+
+function resetRoomSelection() {
+  selectedRoom = null;
+  els.formCard.classList.add('hidden');
+}
+
+function renderLevelButtons() {
+  const levels = Object.entries(currentBuilding()?.levels || {});
+  if (!currentBuilding()?.levels?.[selectedLevel]) selectedLevel = levels[0]?.[0] || 'RDC';
+
+  els.levelButtons.innerHTML = levels.map(([levelId, level]) =>
+    `<button type="button" class="segment-btn ${levelId === selectedLevel ? 'active' : ''}" data-level="${levelId}">${level.label}</button>`
+  ).join('');
+
+  els.levelButtons.querySelectorAll('[data-level]').forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedLevel = button.dataset.level;
+      selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
+      resetRoomSelection();
+      renderSelectorsAndPlan();
     });
-    els.plans.appendChild(card);
   });
 }
 
-function selectRoom(room, levelId) {
-  const building = PLAN_CONFIG[selectedBuilding];
-  selectedRoom = { ...room, buildingId: selectedBuilding, levelId, levelLabel: building.levels[levelId].label };
-  els.selectedRoom.textContent = `${building.label} • ${selectedRoom.levelLabel} • ${room.name}`;
+function renderZoneButtons() {
+  const zones = availableZones();
+  if (!currentLevel()?.zones?.[selectedZone]) selectedZone = zones[0]?.[0] || 'caserne';
+
+  const needsChoice = zones.length > 1;
+  els.zoneWrap.classList.toggle('hidden', !needsChoice);
+
+  if (!needsChoice) {
+    els.zoneButtons.innerHTML = '';
+    return;
+  }
+
+  els.zoneButtons.innerHTML = zones.map(([zoneId, zone]) =>
+    `<button type="button" class="segment-btn ${zoneId === selectedZone ? 'active' : ''}" data-zone="${zoneId}">${zone.label}</button>`
+  ).join('');
+
+  els.zoneButtons.querySelectorAll('[data-zone]').forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedZone = button.dataset.zone;
+      resetRoomSelection();
+      renderSelectorsAndPlan();
+    });
+  });
+}
+
+function renderCurrentPlan() {
+  els.plans.innerHTML = '';
+  const building = currentBuilding();
+  const level = currentLevel();
+  const zone = level?.zones?.[selectedZone];
+  if (!building || !level || !zone) return;
+
+  const card = document.createElement('article');
+  card.className = 'plan-card';
+  card.innerHTML = `
+    <h3>
+      <span>${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''}</span>
+      <span class="plan-note">Touchez une pièce</span>
+    </h3>
+    <div class="plan-canvas"></div>
+  `;
+
+  renderPlan(card.querySelector('.plan-canvas'), selectedBuilding, selectedLevel, {
+    zoneId: selectedZone,
+    mode: 'public',
+    selectedRoomId: selectedRoom?.id,
+    onRoomClick: selectRoom
+  });
+
+  els.plans.appendChild(card);
+}
+
+function renderSelectorsAndPlan() {
+  renderLevelButtons();
+  renderZoneButtons();
+  renderCurrentPlan();
+}
+
+function selectRoom(room) {
+  const building = currentBuilding();
+  const level = currentLevel();
+  const zone = level?.zones?.[selectedZone];
+  selectedRoom = {
+    ...room,
+    buildingId: selectedBuilding,
+    buildingLabel: building.label,
+    levelId: selectedLevel,
+    levelLabel: level.label,
+    zoneId: selectedZone,
+    zoneLabel: zone?.label || ''
+  };
+
+  els.selectedRoom.textContent =
+    `${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''} • ${room.code ? room.code + ' — ' : ''}${room.name}`;
+
   els.formCard.classList.remove('hidden');
-  renderBuildingPlans();
+  renderCurrentPlan();
   setTimeout(() => els.formCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
 }
 
 els.buildingButtons.forEach((button) => {
   button.addEventListener('click', () => {
     selectedBuilding = button.dataset.building;
-    selectedRoom = null;
-    els.formCard.classList.add('hidden');
+    selectedLevel = Object.keys(currentBuilding()?.levels || {})[0] || 'RDC';
+    selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
+    resetRoomSelection();
     els.buildingButtons.forEach((b) => b.classList.toggle('active', b === button));
-    renderBuildingPlans();
+    renderSelectorsAndPlan();
   });
 });
 
 els.description.addEventListener('input', () => {
   const category = classifyCategory(els.description.value);
-  els.categoryPreview.textContent = els.description.value.trim() ? `Classement automatique : ${category}` : 'La catégorie sera déterminée automatiquement.';
+  els.categoryPreview.textContent = !els.description.value.trim()
+    ? 'La catégorie sera déterminée automatiquement.'
+    : category
+      ? `Classement automatique : ${category}`
+      : 'Catégorie à confirmer par le service Infra.';
 });
 
 els.form.addEventListener('submit', async (event) => {
@@ -87,7 +183,7 @@ els.form.addEventListener('submit', async (event) => {
     await preparePublicSession();
     await createAnomaly({
       roomId: selectedRoom.id,
-      roomName: selectedRoom.name,
+      roomName: selectedRoom.code ? `${selectedRoom.code} — ${selectedRoom.name}` : selectedRoom.name,
       buildingId: selectedRoom.buildingId,
       levelId: selectedRoom.levelId,
       reporterFirstName: firstName,
@@ -100,10 +196,10 @@ els.form.addEventListener('submit', async (event) => {
 
     els.form.reset();
     els.categoryPreview.textContent = 'La catégorie sera déterminée automatiquement.';
-    const doneRoom = `${PLAN_CONFIG[selectedRoom.buildingId].label} • ${selectedRoom.levelLabel} • ${selectedRoom.name}`;
+    const doneRoom = `${selectedRoom.buildingLabel} • ${selectedRoom.levelLabel}${availableZones().length > 1 ? ` • ${selectedRoom.zoneLabel}` : ''} • ${selectedRoom.roomName || selectedRoom.name}`;
     selectedRoom = null;
     els.formCard.classList.add('hidden');
-    renderBuildingPlans();
+    renderCurrentPlan();
     toast(`Signalement enregistré — ${doneRoom}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (error) {
@@ -115,4 +211,4 @@ els.form.addEventListener('submit', async (event) => {
   }
 });
 
-renderBuildingPlans();
+renderSelectorsAndPlan();
