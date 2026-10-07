@@ -294,17 +294,10 @@ body.plan-fullscreen-body { overflow:hidden; }
   .plan-legend-hint { width:100%;margin-left:0; }
 }
 
-.plan-canvas.plan-test-gesture {
-  min-height:360px !important;
-  aspect-ratio:auto !important;
-  background:#e9edf1;
+
+.plan-canvas.plan-vector-transparent {
+  background:transparent !important;
 }
-.plan-canvas.plan-test-gesture .plan-svg {
-  width:100%;
-  height:100%;
-}
-@media (max-width:640px) {
-  .plan-canvas.plan-test-gesture {
-    min-height:300px !important;
-  }
+.plan-canvas.plan-vector-transparent .plan-svg {
+  background:transparent !important;
 }
