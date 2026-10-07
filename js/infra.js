@@ -178,10 +178,10 @@ function renderPlanVisualizer() {
   }
 
   const roomIds = new Set((zone.rooms || []).map(room => room.id));
-  const planRows = anomalies.filter(a => roomIds.has(a.roomId));
+  const planRows = anomalies.filter(a => roomIds.has(a.roomId) && a.status !== 'resolu');
 
   els.planTitle.textContent = [building.label, planOptionLabelLevel(levelId, level), zone.label].filter(Boolean).join(' • ');
-  els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} sur ce plan`;
+  els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} active${planRows.length > 1 ? 's' : ''} sur ce plan`;
 
   // Même fenêtre d'affichage que sur le formulaire Agent :
   // le ratio suit directement le viewBox du plan sélectionné.
@@ -202,9 +202,9 @@ function renderPlanVisualizer() {
 
 function openPlanRoom(roomId) {
   const room = getRoom(roomId);
-  const rows = anomalies.filter(a => a.roomId === roomId);
+  const rows = anomalies.filter(a => a.roomId === roomId && a.status !== 'resolu');
   if (!rows.length) {
-    toast('Aucune anomalie pour cette pièce.');
+    toast('Aucune anomalie active pour cette pièce.');
     return;
   }
   if (rows.length === 1) {
