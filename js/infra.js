@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-2';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-2';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-3';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-3';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-planviz-2';
+} from './store.js?v=20261007-planviz-3';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -178,10 +178,10 @@ function renderPlanVisualizer() {
   }
 
   const roomIds = new Set((zone.rooms || []).map(room => room.id));
-  const planRows = anomalies.filter(a => roomIds.has(a.roomId));
+  const planRows = anomalies.filter(a => roomIds.has(a.roomId) && a.status !== 'resolu');
 
   els.planTitle.textContent = [building.label, planOptionLabelLevel(levelId, level), zone.label].filter(Boolean).join(' • ');
-  els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} sur ce plan`;
+  els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} active${planRows.length > 1 ? 's' : ''} sur ce plan`;
 
   // Même fenêtre d'affichage que sur le formulaire Agent :
   // le ratio suit directement le viewBox du plan sélectionné.
@@ -202,9 +202,9 @@ function renderPlanVisualizer() {
 
 function openPlanRoom(roomId) {
   const room = getRoom(roomId);
-  const rows = anomalies.filter(a => a.roomId === roomId);
+  const rows = anomalies.filter(a => a.roomId === roomId && a.status !== 'resolu');
   if (!rows.length) {
-    toast('Aucune anomalie pour cette pièce.');
+    toast('Aucune anomalie active pour cette pièce.');
     return;
   }
   if (rows.length === 1) {
