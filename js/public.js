@@ -1,7 +1,7 @@
 window.__infraLvnBoot = true;
-import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1200';
-import { renderPlan } from './ui.js?v=20261007-1200';
-import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-1200';
+import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1225';
+import { renderPlan } from './ui.js?v=20261007-1225';
+import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-1225';
 
 let selectedBuilding = 'A';
 let selectedLevel = 'RDC';
