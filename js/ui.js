@@ -29,6 +29,7 @@ export function renderPlan(container, buildingId, levelId, {
   zoneId = null,
   mode = 'public',
   anomalies = [],
+  roomStatus = {},
   selectedRoomId = null,
   onRoomClick = () => {}
 } = {}) {
@@ -53,12 +54,13 @@ export function renderPlan(container, buildingId, levelId, {
   zone.rooms.forEach((room) => {
     const group = document.createElementNS(svgNs, 'g');
     group.classList.add('plan-room');
-    if (mode === 'infra') {
-      const active = roomHasActiveAnomaly(room.id, anomalies);
-      group.classList.add(active ? 'room-red' : 'room-green');
-    } else {
-      group.classList.add('room-neutral');
-    }
+    const activeFromStatus = roomStatus && Object.prototype.hasOwnProperty.call(roomStatus, room.id)
+      ? roomStatus[room.id] === true
+      : null;
+    const active = activeFromStatus === null
+      ? roomHasActiveAnomaly(room.id, anomalies)
+      : activeFromStatus;
+    group.classList.add(active ? 'room-red' : 'room-green');
     if (selectedRoomId === room.id) group.classList.add('room-selected');
     group.setAttribute('tabindex', '0');
     group.setAttribute('role', 'button');
