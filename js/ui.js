@@ -28,7 +28,7 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
 function buildRoomLabelLayout(room) {
   const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
-    return { lines: [], fontSize: 0.8, lineGap: 1, showCode: false, codeSize: 0.65, rotate: false };
+    return { lines: [], fontSize: 0.42, lineGap: 0.5, showCode: false, codeSize: 0.3 };
   }
 
   const splitInto = (count) => {
@@ -39,7 +39,7 @@ function buildRoomLabelLayout(room) {
     let current = [];
     let currentLength = 0;
 
-    words.forEach((word) => {
+    for (const word of words) {
       const nextLength = currentLength + (current.length ? 1 : 0) + word.length;
       const canBreak = lines.length < count - 1 && current.length > 0;
       if (canBreak && nextLength > target) {
@@ -50,50 +50,39 @@ function buildRoomLabelLayout(room) {
         current.push(word);
         currentLength = nextLength;
       }
-    });
+    }
 
     if (current.length) lines.push(current.join(' '));
     return lines;
   };
 
-  const fit = (width, height, rotate) => {
-    const maxLines = height < 2.8 ? 1 : height < 5 ? 2 : height < 9 ? 3 : 4;
-    const availableW = Math.max(0.7, width * 0.78);
-    const availableH = Math.max(0.7, height * 0.68);
-    let best = null;
+  const maxLines = room.h < 2.6 ? 1 : room.h < 5 ? 2 : 3;
+  const availableW = Math.max(0.6, room.w * 0.72);
+  const availableH = Math.max(0.6, room.h * 0.58);
+  let best = null;
 
-    for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
-      const lines = splitInto(count);
-      const longest = Math.max(...lines.map(line => line.length), 1);
-      const sizeByWidth = availableW / (longest * 0.64);
-      const sizeByHeight = availableH / (lines.length * 1.28);
-      const fontSize = Math.max(0.28, Math.min(1.45, sizeByWidth, sizeByHeight));
-      if (!best || fontSize > best.fontSize) best = { lines, fontSize };
-    }
+  for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
+    const lines = splitInto(count);
+    const longest = Math.max(...lines.map(line => line.length), 1);
+    const sizeByWidth = availableW / (longest * 0.68);
+    const sizeByHeight = availableH / (lines.length * 1.35);
+    const fontSize = Math.max(0.22, Math.min(0.78, sizeByWidth, sizeByHeight));
+    if (!best || fontSize > best.fontSize) best = { lines, fontSize };
+  }
 
-    const lineGap = Math.max(0.4, best.fontSize * 1.22);
-    const projectedTextHeight = best.lines.length * lineGap;
-    const showCode = !!room.code
-      && height >= 5.2
-      && projectedTextHeight + Math.max(0.55, best.fontSize * 0.9) <= height * 0.72;
+  const lineGap = Math.max(0.30, best.fontSize * 1.16);
+  const projectedTextHeight = best.lines.length * lineGap;
+  const showCode = !!room.code
+    && room.w >= 5
+    && room.h >= 6.5
+    && projectedTextHeight + Math.max(0.45, best.fontSize * 0.8) <= room.h * 0.55;
 
-    return {
-      ...best,
-      lineGap,
-      showCode,
-      codeSize: Math.max(0.28, Math.min(0.88, best.fontSize * 0.66)),
-      rotate
-    };
+  return {
+    ...best,
+    lineGap,
+    showCode,
+    codeSize: Math.max(0.22, Math.min(0.56, best.fontSize * 0.62))
   };
-
-  const horizontal = fit(room.w, room.h, false);
-  const vertical = fit(room.h, room.w, true);
-
-  const tallNarrow = room.h > room.w * 1.18;
-  const verticalClearlyBetter = vertical.fontSize > horizontal.fontSize * 1.14;
-  const horizontalVerySmall = horizontal.fontSize < 0.5 && vertical.fontSize > horizontal.fontSize * 1.05;
-
-  return (tallNarrow && (verticalClearlyBetter || horizontalVerySmall)) ? vertical : horizontal;
 }
 
 function enablePlanNavigation(container, svg) {
@@ -359,7 +348,6 @@ export function renderPlan(container, buildingId, levelId, {
     label.setAttribute('text-anchor', 'middle');
     label.classList.add('room-label');
     label.setAttribute('font-size', String(layout.fontSize));
-    if (layout.rotate) label.setAttribute('transform', `rotate(90 ${centerX} ${centerY})`);
 
     const labelBlockHeight = Math.max(0, (layout.lines.length - 1) * layout.lineGap);
     const codeOffset = layout.showCode ? layout.lineGap * 0.42 : 0;
@@ -379,7 +367,6 @@ export function renderPlan(container, buildingId, levelId, {
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
     code.setAttribute('font-size', String(layout.codeSize));
-    if (layout.rotate) code.setAttribute('transform', `rotate(90 ${centerX} ${centerY})`);
     code.textContent = layout.showCode ? (room.code || '') : '';
 
     const activate = () => {
