@@ -95,7 +95,7 @@ function buildRoomLabelLayout(room) {
   };
 }
 
-function enablePlanNavigation(container, svg) {
+function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
   const vb = svg.viewBox.baseVal;
   const CONTENT = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
   const padX = CONTENT.w * 0.065;
@@ -111,7 +111,14 @@ function enablePlanNavigation(container, svg) {
   const pointers = new Map();
   let pinchLastDistance = null;
   let pinchLastCenter = null;
+  let pinchLastAngle = null;
+  let rotation = 0;
   let moved = false;
+  const scene = svg.querySelector('.plan-scene');
+  const rotationCenter = {
+    x: CONTENT.x + CONTENT.w / 2,
+    y: CONTENT.y + CONTENT.h / 2
+  };
 
   const controls = document.createElement('div');
   controls.className = 'plan-nav-controls';
@@ -124,6 +131,12 @@ function enablePlanNavigation(container, svg) {
 
   const applyView = () => {
     svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
+    if (scene) {
+      scene.setAttribute(
+        'transform',
+        allowRotation ? `rotate(${rotation} ${rotationCenter.x} ${rotationCenter.y})` : ''
+      );
+    }
   };
 
   const clampView = () => {
@@ -173,6 +186,7 @@ function enablePlanNavigation(container, svg) {
   controls.querySelector('[data-plan-reset]').addEventListener('click', (event) => {
     event.stopPropagation();
     view = { ...BASE };
+    rotation = 0;
     applyView();
   });
 
@@ -224,6 +238,7 @@ function enablePlanNavigation(container, svg) {
       const pts = [...pointers.values()];
       pinchLastDistance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       pinchLastCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      pinchLastAngle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180 / Math.PI;
     }
   });
 
@@ -263,6 +278,14 @@ function enablePlanNavigation(container, svg) {
         clampView();
       }
 
+      const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180 / Math.PI;
+      if (allowRotation && pinchLastAngle !== null) {
+        let delta = angle - pinchLastAngle;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        rotation += delta;
+      }
+
       if (pinchLastDistance && distance > 0) {
         zoomAt(pinchLastDistance / distance, center.x, center.y);
       } else {
@@ -271,6 +294,7 @@ function enablePlanNavigation(container, svg) {
 
       pinchLastDistance = distance;
       pinchLastCenter = center;
+      pinchLastAngle = angle;
       moved = true;
     }
   });
@@ -283,6 +307,7 @@ function enablePlanNavigation(container, svg) {
     if (pointers.size < 2) {
       pinchLastDistance = null;
       pinchLastCenter = null;
+      pinchLastAngle = null;
     }
   };
 
@@ -290,6 +315,7 @@ function enablePlanNavigation(container, svg) {
   svg.addEventListener('pointercancel', finishPointer);
 
   container.classList.add('plan-navigable');
+  container.classList.toggle('plan-rotation-enabled', allowRotation);
   container.appendChild(controls);
   applyView();
 }
@@ -317,6 +343,10 @@ export function renderPlan(container, buildingId, levelId, {
   svg.classList.add('plan-svg');
   if (zone.planImage) svg.classList.add('plan-has-image');
 
+  const scene = document.createElementNS(svgNs, 'g');
+  scene.classList.add('plan-scene');
+  svg.appendChild(scene);
+
   if (zone.planImage) {
     const image = document.createElementNS(svgNs, 'image');
     image.setAttribute('href', zone.planImage);
@@ -326,13 +356,13 @@ export function renderPlan(container, buildingId, levelId, {
     image.setAttribute('height', String(vb.height));
     image.setAttribute('preserveAspectRatio', 'none');
     image.classList.add('plan-background');
-    svg.appendChild(image);
+    scene.appendChild(image);
   }
 
   const outer = document.createElementNS(svgNs, 'rect');
   outer.setAttribute('x', '0.5'); outer.setAttribute('y', '0.5'); outer.setAttribute('width', String(vb.width - 1)); outer.setAttribute('height', String(vb.height - 1));
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
-  if (!zone.planImage) svg.appendChild(outer);
+  if (!zone.planImage) scene.appendChild(outer);
 
   zone.rooms.forEach((room) => {
     const scaleY = zone.coordinateScaleY || 1;
@@ -408,11 +438,12 @@ export function renderPlan(container, buildingId, levelId, {
     } else {
       group.append(shape, label, code);
     }
-    svg.appendChild(group);
+    scene.appendChild(group);
   });
 
   container.replaceChildren(svg);
-  enablePlanNavigation(container, svg);
+  const allowRotation = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
+  enablePlanNavigation(container, svg, { allowRotation });
 }
 
 export function statusBadge(status) {
