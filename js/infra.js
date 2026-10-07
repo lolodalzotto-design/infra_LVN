@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-menu-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-menu-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-active-list-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-active-list-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-menu-1';
+} from './store.js?v=20261007-active-list-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -237,9 +237,10 @@ function openPlanRoom(roomId) {
 }
 
 function renderList(rows = filteredAnomalies()) {
-  els.listCount.textContent = `(${rows.length})`;
-  if (!rows.length) { els.list.innerHTML = '<div class="empty">Aucune anomalie pour ces filtres.</div>'; return; }
-  els.list.innerHTML = rows.map(a => {
+  const activeRows = rows.filter(a => a.status !== 'resolu');
+  els.listCount.textContent = `(${activeRows.length})`;
+  if (!activeRows.length) { els.list.innerHTML = '<div class="empty">Aucune anomalie en cours.</div>'; return; }
+  els.list.innerHTML = activeRows.map(a => {
     const room = getRoom(a.roomId);
     const age = anomalyAgeDays(a.createdAt);
     const ageBadge = a.status !== 'resolu' && age >= 3
