@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-simple-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-simple-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-simple-1';
+} from './store.js?v=20261007-planviz-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -29,7 +29,8 @@ const els = {
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
-  globalPlans: $('#global-plans'),
+  planBuilding: $('#plan-building'), planLevel: $('#plan-level'), planZone: $('#plan-zone'), planZoneField: $('#plan-zone-field'),
+  selectedPlan: $('#selected-plan'), planTitle: $('#plan-title'), planAnomalyCount: $('#plan-anomaly-count'),
   urgentPanel: $('#urgent-panel'), urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
   modalRoot: $('#modal-root')
 };
@@ -122,63 +123,96 @@ function renderPriorityPanels(rows) {
   });
 }
 
-function planEntries() {
-  const entries = [];
-  Object.entries(PLAN_CONFIG).forEach(([buildingId, building]) => {
-    Object.entries(building.levels || {}).forEach(([levelId, level]) => {
-      Object.entries(level.zones || {}).forEach(([zoneId, zone]) => {
-        entries.push({ buildingId, building, levelId, level, zoneId, zone });
-      });
-    });
-  });
-  return entries;
+function planOptionLabelLevel(levelId, level) {
+  if (levelId === 'RDC') return 'Rez-de-chaussée';
+  return level?.label || levelId;
 }
 
-function renderGlobalPlans(rows) {
-  const levelOrder = [
-    { id:'RDC', label:'Rez-de-chaussée' },
-    { id:'R1', label:'R+1' },
-    { id:'R2', label:'R+2' }
-  ];
-  const entries = planEntries();
-  els.globalPlans.replaceChildren();
+function fillPlanBuildingOptions() {
+  const entries = Object.entries(PLAN_CONFIG);
+  els.planBuilding.innerHTML = entries.map(([id, building]) =>
+    `<option value="${escapeHtml(id)}">${escapeHtml(building.label)}</option>`
+  ).join('');
+  refreshPlanLevelOptions();
+}
 
-  levelOrder.forEach(({ id: levelId, label }) => {
-    const levelEntries = entries.filter(entry => entry.levelId === levelId);
-    if (!levelEntries.length) return;
+function refreshPlanLevelOptions() {
+  const buildingId = els.planBuilding.value || Object.keys(PLAN_CONFIG)[0];
+  const levels = PLAN_CONFIG[buildingId]?.levels || {};
+  const previous = els.planLevel.value;
+  els.planLevel.innerHTML = Object.entries(levels).map(([levelId, level]) =>
+    `<option value="${escapeHtml(levelId)}">${escapeHtml(planOptionLabelLevel(levelId, level))}</option>`
+  ).join('');
+  if (previous && levels[previous]) els.planLevel.value = previous;
+  refreshPlanZoneOptions();
+}
 
-    const levelRows = rows.filter(a => a.levelId === levelId);
+function refreshPlanZoneOptions() {
+  const buildingId = els.planBuilding.value;
+  const levelId = els.planLevel.value;
+  const zones = PLAN_CONFIG[buildingId]?.levels?.[levelId]?.zones || {};
+  const previous = els.planZone.value;
+  const zoneEntries = Object.entries(zones);
 
-    const card = document.createElement('article');
-    card.className = 'level-overview-card';
-    card.innerHTML = `<div class="level-overview-head">
-      <div>
-        <h3>${escapeHtml(label)}</h3>
-        <div class="help">${levelRows.length} anomalie${levelRows.length > 1 ? 's' : ''} visible${levelRows.length > 1 ? 's' : ''}</div>
-      </div>
-    </div><div class="level-plan-composite"></div>`;
+  els.planZone.innerHTML = zoneEntries.map(([zoneId, zone]) =>
+    `<option value="${escapeHtml(zoneId)}">${escapeHtml(zone.label)}</option>`
+  ).join('');
 
-    const composite = card.querySelector('.level-plan-composite');
-    composite.classList.add(`segments-${levelEntries.length}`);
+  if (previous && zones[previous]) els.planZone.value = previous;
+  els.planZoneField.classList.toggle('hidden', zoneEntries.length <= 1);
+  renderPlanVisualizer();
+}
 
-    levelEntries.forEach((entry) => {
-      const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
-      const planRows = rows.filter(a => roomIds.has(a.roomId));
+function renderPlanVisualizer() {
+  const buildingId = els.planBuilding.value;
+  const levelId = els.planLevel.value;
+  const zoneId = els.planZone.value;
+  const building = PLAN_CONFIG[buildingId];
+  const level = building?.levels?.[levelId];
+  const zone = level?.zones?.[zoneId] || Object.values(level?.zones || {})[0];
+  if (!building || !level || !zone) {
+    els.selectedPlan.replaceChildren();
+    els.planTitle.textContent = '';
+    els.planAnomalyCount.textContent = '';
+    return;
+  }
 
-      const fragment = document.createElement('div');
-      fragment.className = 'plan-canvas level-plan-fragment';
-      composite.appendChild(fragment);
+  const roomIds = new Set((zone.rooms || []).map(room => room.id));
+  const planRows = anomalies.filter(a => roomIds.has(a.roomId));
 
-      renderPlan(fragment, entry.buildingId, entry.levelId, {
-        zoneId: entry.zoneId,
-        mode: 'infra',
-        anomalies: planRows,
-        statusColors: true,
-        onRoomClick: (room) => openOverviewRoom(room.id)
-      });
-    });
+  els.planTitle.textContent = [building.label, planOptionLabelLevel(levelId, level), zone.label].filter(Boolean).join(' • ');
+  els.planAnomalyCount.textContent = `${planRows.length} anomalie${planRows.length > 1 ? 's' : ''} sur ce plan`;
 
-    els.globalPlans.appendChild(card);
+  renderPlan(els.selectedPlan, buildingId, levelId, {
+    zoneId: Object.entries(level.zones).find(([, value]) => value === zone)?.[0] || zoneId,
+    mode: 'infra',
+    anomalies: planRows,
+    statusColors: true,
+    onRoomClick: (room) => openPlanRoom(room.id)
+  });
+}
+
+function openPlanRoom(roomId) {
+  const room = getRoom(roomId);
+  const rows = anomalies.filter(a => a.roomId === roomId);
+  if (!rows.length) {
+    toast('Aucune anomalie pour cette pièce.');
+    return;
+  }
+  if (rows.length === 1) {
+    openAnomalyModal(rows[0].id);
+    return;
+  }
+
+  modal(`<div class="modal-head"><div><h2>${escapeHtml(room?.name || 'Pièce')}</h2><div class="help">${rows.length} anomalies sur cette pièce</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="room-popup-list">${rows.map(a => `<article class="anomaly-card ${a.urgent ? 'urgent' : ''}">
+      <div class="anomaly-top"><strong>${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description)}</strong>${statusBadge(a.status)}</div>
+      <div class="anomaly-meta"><span>${escapeHtml(a.category || 'Autre')}</span><span>${formatDate(a.createdAt)}</span></div>
+      <div class="submit-row" style="margin-top:8px"><button type="button" class="secondary plan-open-anomaly" data-id="${escapeHtml(a.id)}">Ouvrir</button></div>
+    </article>`).join('')}</div>`);
+
+  els.modalRoot.querySelectorAll('.plan-open-anomaly').forEach(button => {
+    button.addEventListener('click', () => openAnomalyModal(button.dataset.id));
   });
 }
 
@@ -204,7 +238,7 @@ function renderAll() {
   renderKpis(rows);
   if (currentUser?.isAdmin) {
     renderPriorityPanels(rows);
-    renderGlobalPlans(rows);
+    renderPlanVisualizer();
   }
   renderList(rows);
 }
@@ -471,6 +505,7 @@ function openAnomalyModal(id) {
 
 async function init() {
   fillCategories();
+  fillPlanBuildingOptions();
   const demo = getAppMode() === 'demo';
 
   els.loginForm.addEventListener('submit', async e => {
@@ -508,6 +543,9 @@ async function init() {
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
   [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
   els.filterSearch.addEventListener('input', renderAll);
+  els.planBuilding.addEventListener('change', refreshPlanLevelOptions);
+  els.planLevel.addEventListener('change', refreshPlanZoneOptions);
+  els.planZone.addEventListener('change', renderPlanVisualizer);
 
   if (demo) {
     window.addEventListener('keydown', e => {
