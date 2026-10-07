@@ -234,3 +234,62 @@ body.plan-fullscreen-body { overflow:hidden; }
 .plan-has-image .plan-room.room-selected .plan-shape { stroke-width:2.5; }
 .plan-has-image .plan-room.room-green.room-selected .plan-shape { fill:rgba(35,133,74,.34);stroke:var(--green); }
 .plan-has-image .plan-room.room-red.room-selected .plan-shape { fill:rgba(198,45,52,.38);stroke:var(--red); }
+
+/* Original LVN plan presentation */
+.plan-has-image .room-label,
+.plan-has-image .room-code { display:none !important; }
+
+.plan-has-image .plan-room .plan-shape {
+  vector-effect:non-scaling-stroke;
+  stroke-width:.7;
+  transition:fill .14s ease, stroke .14s ease;
+}
+
+.plan-has-image .plan-room.room-green .plan-shape {
+  fill:rgba(35,133,74,.045);
+  stroke:rgba(35,133,74,.42);
+}
+
+.plan-has-image .plan-room.room-red .plan-shape {
+  fill:rgba(198,45,52,.13);
+  stroke:rgba(198,45,52,.82);
+  stroke-width:1.05;
+}
+
+.plan-has-image .plan-room:hover .plan-shape,
+.plan-has-image .plan-room:focus .plan-shape {
+  filter:none;
+  stroke-width:1.25;
+}
+
+.plan-has-image .plan-room.room-green.room-selected .plan-shape {
+  fill:rgba(35,133,74,.28);
+  stroke:var(--green);
+  stroke-width:1.8;
+}
+
+.plan-has-image .plan-room.room-red.room-selected .plan-shape {
+  fill:rgba(198,45,52,.32);
+  stroke:var(--red);
+  stroke-width:1.8;
+}
+
+.plan-legend {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:0 0 9px;
+  color:var(--muted);
+  font-size:.72rem;
+  font-weight:700;
+}
+.plan-legend-item { display:inline-flex;align-items:center;gap:5px; }
+.plan-legend-dot { width:9px;height:9px;border-radius:50%;display:inline-block; }
+.plan-legend-dot.ok { background:var(--green); }
+.plan-legend-dot.alert { background:var(--red); }
+.plan-legend-hint { margin-left:auto;font-weight:600; }
+@media (max-width:640px) {
+  .plan-legend { gap:9px; }
+  .plan-legend-hint { width:100%;margin-left:0; }
+}
