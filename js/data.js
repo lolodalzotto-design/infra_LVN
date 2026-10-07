@@ -149,32 +149,40 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            rooms: layoutRooms([
-              room('A-R2-A201', 'A201', 'Chambrée N5'),
-              room('A-R2-A201BIS', 'A201 Bis', 'Entrée / chambrée N3 impair'),
-              room('A-R2-A202', 'A202', 'Chambrée N5'),
-              room('A-R2-A202BIS', 'A202 Bis', 'SDB N5'),
-              room('A-R2-A203', 'A203', 'Chambrée N3 impair'),
-              room('A-R2-A204', 'A204', 'Chambrée N4'),
-              room('A-R2-A205', 'A205', 'Douches / lavabos / WC'),
-              room('A-R2-A206', 'A206', 'Local / entrée BAT 8'),
-              room('A-R2-A207', 'A207', 'Chambrée N4'),
-              room('A-R2-A208', 'A208', 'Chambrée féminine'),
-              room('A-R2-A208BIS', 'A208 Bis', 'WC'),
-              room('A-R2-A208TER', 'A208 Ter', 'SDB'),
-              room('A-R2-A209', 'A209', 'Chambrée N4'),
-              room('A-R2-A210', 'A210', 'Chambrée équipe paire'),
-              room('A-R2-A211', 'A211', 'Archives BSC'),
-              room('A-R2-A212', 'A212', 'Chambrée stagiaire'),
-              room('A-R2-A213', 'A213', 'Chambrée N4'),
-              room('A-R2-A214', 'A214', 'Chambrée niveau 3 impair'),
-              room('A-R2-A215', 'A215', 'Local')
-            ], 4)
+            viewBox: { width: 100, height: 33 },
+            rooms: [
+              { id:'A-R2-A214', code:'A214', name:'Chambrée niv 3 impair', x:1.7, y:0.0, w:16.9, h:16.8, points:[[1.7,0],[18.6,0],[18.6,16.8],[5.5,16.8]] },
+              { id:'A-R2-ENT6', code:'', name:'Entrée BAT 6', x:18.6, y:0.0, w:6.4, h:7.0 },
+              { id:'A-R2-A211', code:'A211', name:'Archives BSC', x:18.6, y:7.0, w:6.4, h:9.8 },
+              { id:'A-R2-A210', code:'A210', name:'Chambrée équipe paire', x:25.0, y:0.0, w:10.8, h:16.8 },
+              { id:'A-R2-A208TER', code:'A208 Ter', name:'SDB', x:35.8, y:5.2, w:5.9, h:8.1 },
+              { id:'A-R2-A208BIS', code:'A208 Bis', name:'WC', x:35.8, y:13.3, w:5.9, h:3.5 },
+              { id:'A-R2-A208', code:'A208', name:'Chambrée féminine', x:41.7, y:0.0, w:8.9, h:16.8 },
+              { id:'A-R2-ENT8', code:'', name:'Entrée BAT 8', x:50.6, y:0.0, w:6.2, h:7.0 },
+              { id:'A-R2-A206', code:'A206', name:'Local', x:50.6, y:7.0, w:6.2, h:9.8 },
+              { id:'A-R2-A205', code:'A205', name:'Douches / lavabos / WC', x:56.8, y:0.0, w:18.3, h:16.8 },
+              { id:'A-R2-A203', code:'A203', name:'Chambrée N3 impair', x:75.1, y:0.0, w:17.7, h:16.8 },
+              { id:'A-R2-A201BIS', code:'A201 Bis', name:'Entrée / dégagement', x:86.0, y:13.3, w:6.8, h:3.5 },
+              { id:'A-R2-ENT10', code:'', name:'Entrée BAT 10', x:92.8, y:0.0, w:7.2, h:7.0 },
+
+              { id:'A-R2-A215', code:'A215', name:'Local', x:0.0, y:16.8, w:5.5, h:6.9 },
+              { id:'A-R2-A213', code:'A213', name:'Chambrée N4', x:5.5, y:23.7, w:11.5, h:9.3 },
+              { id:'A-R2-A212', code:'A212', name:'Chambrée stagiaire', x:17.0, y:23.7, w:8.0, h:9.3 },
+              { id:'A-R2-A209', code:'A209', name:'Chambrée N4', x:25.0, y:23.7, w:7.4, h:9.3 },
+              { id:'A-R2-SDB209', code:'', name:'SDB', x:32.4, y:23.7, w:3.4, h:9.3 },
+              { id:'A-R2-A207', code:'A207', name:'Chambrée N4', x:35.8, y:23.7, w:11.2, h:9.3 },
+              { id:'A-R2-SDB207', code:'', name:'SDB', x:47.0, y:23.7, w:3.6, h:9.3 },
+              { id:'A-R2-ESC', code:'', name:'Escalier', x:50.6, y:25.5, w:6.2, h:7.5 },
+              { id:'A-R2-A204', code:'A204', name:'Chambrée N4', x:56.8, y:23.7, w:17.6, h:9.3, points:[[56.8,23.7],[62.4,23.7],[64.0,22.0],[74.4,22.0],[74.4,33.0],[56.8,33.0]] },
+              { id:'A-R2-SDB204', code:'', name:'SDB', x:70.7, y:23.7, w:3.7, h:9.3 },
+              { id:'A-R2-A202BIS', code:'A202 Bis', name:'SDB N5', x:74.4, y:22.0, w:8.0, h:11.0 },
+              { id:'A-R2-A202', code:'A202', name:'Chambrée N5', x:82.4, y:22.0, w:10.4, h:11.0 },
+              { id:'A-R2-A201', code:'A201', name:'Chambrée N5', x:92.8, y:16.8, w:7.2, h:16.2 }
+            ]
           }
         }
       }
-    }
-  },
+    },
   B: {
     label: 'Bâtiment B',
     levels: {
