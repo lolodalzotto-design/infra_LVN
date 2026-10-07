@@ -25,7 +25,7 @@ export const PLAN_CONFIG = {
           caserne: {
             label: 'Caserne',
             viewBox: { width: 100, height: 40 },
-            planImage: './assets/plans/A-RDC-caserne.webp',
+            planImage: './assets/plans/A-RDC-caserne.webp?v=20261007-0955',
             rooms: [
               { id:'A-RDC-CAS-ENT10', code:'', name:'Entrée BAT 10', x:6.52, y:5.42, w:5.55, h:13.35 },
               { id:'A-RDC-CAS-MEA', code:'', name:'MEA', x:0.20, y:18.90, w:6.10, h:3.16 },
@@ -64,7 +64,7 @@ export const PLAN_CONFIG = {
             label: 'Garage',
             viewBox: { width: 100, height: 107.833333 },
             coordinateScaleY: 1.253875965,
-            planImage: './assets/plans/A-RDC-garage.webp',
+            planImage: './assets/plans/A-RDC-garage.webp?v=20261007-0955',
             rooms: [
               { id:'A-RDC-GAR-A035', code:'A035', name:'Garage VSAV', x:2.33, y:23.20, w:16.67, h:35.90 },
               { id:'A-RDC-GAR-A036', code:'A036', name:'Garage CVGD VRCG2', x:2.33, y:59.10, w:16.75, h:16.35 },
