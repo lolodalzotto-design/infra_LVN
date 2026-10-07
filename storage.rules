@@ -5,11 +5,26 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Compte Infra commun autorisé.
-    function isInfra() {
+    function isPasswordUser() {
       return signedIn()
-        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isBootstrapAdmin() {
+      return isPasswordUser()
         && request.auth.token.email == 'lolo.dalzotto@gmail.com';
+    }
+
+    function hasInfraProfile() {
+      return isPasswordUser()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function isInfra() {
+      return isBootstrapAdmin()
+        || (hasInfraProfile()
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.active == true
+          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'infra']);
     }
 
     function validImageUpload() {
@@ -19,7 +34,6 @@ service firebase.storage {
     }
 
     match /reports/{uid}/{fileName} {
-      // L'agent anonyme peut envoyer/lire uniquement sa propre photo.
       allow create: if signedIn()
         && request.auth.uid == uid
         && validImageUpload();
