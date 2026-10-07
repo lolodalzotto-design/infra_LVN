@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-levels-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-levels-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-simple-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-simple-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-levels-1';
+} from './store.js?v=20261007-simple-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -19,7 +19,6 @@ let anomalies = [];
 let unsubscribe = null;
 let profileUnsubscribe = null;
 let currentUser = null;
-let quickFilter = 'all';
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -30,9 +29,8 @@ const els = {
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
-  statusChart: $('#status-chart'), overviewStats: $('#overview-stats'), overviewFilterNote: $('#overview-filter-note'), globalPlans: $('#global-plans'),
-  urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'), watchZones: $('#watch-zones'),
-  quickAll: $('#quick-all'), quickUrgent: $('#quick-urgent'), quickOpen: $('#quick-open'), quickProgress: $('#quick-progress'), quickResolved: $('#quick-resolved'),
+  globalPlans: $('#global-plans'),
+  urgentPanel: $('#urgent-panel'), urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
   modalRoot: $('#modal-root')
 };
 
@@ -86,20 +84,8 @@ function renderKpis(rows = filteredAnomalies()) {
 function filteredAnomalies() {
   const status = els.filterStatus.value, category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
   return anomalies.filter(a => {
-    if (quickFilter === 'urgent' && !(a.urgent && a.status !== 'resolu')) return false;
-    if (['a_traiter','en_cours','resolu'].includes(quickFilter) && a.status !== quickFilter) return false;
     if (status === 'active' && a.status === 'resolu') return false;
     if (!['all','active'].includes(status) && a.status !== status) return false;
-    if (category !== 'all' && a.category !== category) return false;
-    if (building !== 'all' && a.buildingId !== building) return false;
-    if (q && !`${a.description} ${a.roomName} ${a.reporterFirstName} ${a.reporterLastName} ${a.category}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
-}
-
-function baseFilteredAnomalies() {
-  const category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
-  return anomalies.filter(a => {
     if (category !== 'all' && a.category !== category) return false;
     if (building !== 'all' && a.buildingId !== building) return false;
     if (q && !`${a.description} ${a.roomName} ${a.reporterFirstName} ${a.reporterLastName} ${a.category}`.toLowerCase().includes(q)) return false;
@@ -114,104 +100,26 @@ function anomalyAgeDays(value) {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
 }
 
-function renderQuickFilters() {
-  const rows = baseFilteredAnomalies();
-  els.quickAll.textContent = rows.length;
-  els.quickUrgent.textContent = rows.filter(a => a.urgent && a.status !== 'resolu').length;
-  els.quickOpen.textContent = rows.filter(a => a.status === 'a_traiter').length;
-  els.quickProgress.textContent = rows.filter(a => a.status === 'en_cours').length;
-  els.quickResolved.textContent = rows.filter(a => a.status === 'resolu').length;
-  document.querySelectorAll('[data-quick-filter]').forEach(button => {
-    button.classList.toggle('active', button.dataset.quickFilter === quickFilter);
-  });
-}
-
 function renderPriorityPanels(rows) {
-  const activeRows = rows.filter(a => a.status !== 'resolu');
-  const urgentRows = activeRows.filter(a => a.urgent).slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const urgentRows = rows
+    .filter(a => a.status !== 'resolu' && a.urgent)
+    .slice()
+    .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  els.urgentPanel.classList.toggle('hidden', urgentRows.length === 0);
   els.urgentCount.textContent = urgentRows.length;
   els.urgentList.innerHTML = urgentRows.length ? urgentRows.slice(0,5).map(a => {
     const room = getRoom(a.roomId);
     const age = anomalyAgeDays(a.createdAt);
     return `<button class="priority-item" type="button" data-priority-id="${escapeHtml(a.id)}">
-      <span class="priority-main"><strong>🚨 ${escapeHtml(a.description)}</strong><small>${escapeHtml(room?.buildingLabel || a.buildingId || '')} · ${escapeHtml(room?.levelLabel || a.levelId || '')} · ${escapeHtml(a.roomName || room?.name || '')}</small></span>
+      <span class="priority-main"><strong>🚨 ${escapeHtml(a.description)}</strong><small>${escapeHtml(room?.levelLabel || a.levelId || '')} · ${escapeHtml(a.roomName || room?.name || '')}</small></span>
       <span class="priority-age">${age} j</span>
     </button>`;
   }).join('') : '<div class="priority-empty">Aucune urgence active.</div>';
 
-  const byRoom = new Map();
-  activeRows.forEach(a => {
-    if (!a.roomId) return;
-    const current = byRoom.get(a.roomId) || { count:0, urgent:0, open:0, progress:0, oldest:0 };
-    current.count += 1;
-    if (a.urgent) current.urgent += 1;
-    if (a.status === 'a_traiter') current.open += 1;
-    if (a.status === 'en_cours') current.progress += 1;
-    current.oldest = Math.max(current.oldest, anomalyAgeDays(a.createdAt));
-    byRoom.set(a.roomId, current);
+  els.urgentList.querySelectorAll('[data-priority-id]').forEach(button => {
+    button.addEventListener('click', () => openAnomalyModal(button.dataset.priorityId));
   });
-
-  const watched = [...byRoom.entries()].map(([roomId, stats]) => {
-    const room = getRoom(roomId);
-    const score = stats.open * 3 + stats.progress * 2 + stats.urgent * 4 + Math.min(stats.oldest, 10) / 5;
-    return { roomId, room, stats, score };
-  }).sort((a,b) => b.score - a.score).slice(0,5);
-
-  els.watchZones.innerHTML = watched.length ? watched.map((item,index) => `<button class="watch-zone" type="button" data-watch-room="${escapeHtml(item.roomId)}">
-    <span class="watch-rank">${index + 1}</span>
-    <span class="watch-main"><strong>${escapeHtml(item.room?.name || 'Pièce')}</strong><small>${escapeHtml(item.room?.buildingLabel || '')} · ${escapeHtml(item.room?.levelLabel || '')}</small></span>
-    <span class="watch-count">${item.stats.count}</span>
-  </button>`).join('') : '<div class="priority-empty">Aucune zone active à surveiller.</div>';
-
-  els.urgentList.querySelectorAll('[data-priority-id]').forEach(button => button.addEventListener('click', () => openAnomalyModal(button.dataset.priorityId)));
-  els.watchZones.querySelectorAll('[data-watch-room]').forEach(button => button.addEventListener('click', () => openOverviewRoom(button.dataset.watchRoom)));
-}
-
-function currentFilterLabel() {
-  const parts = [];
-  const quickLabels = { urgent:'Urgent', a_traiter:'À traiter', en_cours:'En cours', resolu:'Résolues' };
-  const statusText = quickFilter !== 'all'
-    ? quickLabels[quickFilter]
-    : els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
-  const categoryText = els.filterCategory.options[els.filterCategory.selectedIndex]?.textContent;
-  const buildingText = els.filterBuilding.options[els.filterBuilding.selectedIndex]?.textContent;
-  if (buildingText) parts.push(buildingText);
-  if (statusText) parts.push(statusText);
-  if (categoryText) parts.push(categoryText);
-  const q = els.filterSearch.value.trim();
-  if (q) parts.push(`Recherche : “${q}”`);
-  return parts.join(' · ');
-}
-
-function renderStatusChart(rows) {
-  const total = rows.length;
-  const values = [
-    { label:'À traiter', count:rows.filter(a => a.status === 'a_traiter').length, color:'red' },
-    { label:'En cours', count:rows.filter(a => a.status === 'en_cours').length, color:'orange' },
-    { label:'Résolues', count:rows.filter(a => a.status === 'resolu').length, color:'green' }
-  ];
-  els.overviewFilterNote.textContent = currentFilterLabel();
-  els.statusChart.innerHTML = values.map(item => {
-    const width = total ? (item.count / total) * 100 : 0;
-    return `<div class="status-chart-row">
-      <div class="status-chart-label">${item.label}</div>
-      <div class="status-chart-track"><div class="status-chart-fill ${item.color}" style="width:${width}%"></div></div>
-      <div class="status-chart-value">${item.count}</div>
-    </div>`;
-  }).join('');
-}
-
-function renderOverviewStats(rows) {
-  const affectedRooms = new Set(rows.map(a => a.roomId).filter(Boolean)).size;
-  const urgent = rows.filter(a => a.urgent).length;
-  const buildingA = rows.filter(a => a.buildingId === 'A').length;
-  const buildingB = rows.filter(a => a.buildingId === 'B').length;
-  els.overviewStats.innerHTML = [
-    [affectedRooms, 'Pièces concernées'],
-    [urgent, 'Urgences'],
-    [buildingA, 'Bâtiment A'],
-    [buildingB, 'Bâtiment B']
-  ].map(([value,label]) => `<div class="overview-stat"><strong>${value}</strong><span>${label}</span></div>`).join('');
 }
 
 function planEntries() {
@@ -240,19 +148,13 @@ function renderGlobalPlans(rows) {
     if (!levelEntries.length) return;
 
     const levelRows = rows.filter(a => a.levelId === levelId);
-    const activeCount = levelRows.filter(a => a.status !== 'resolu').length;
 
     const card = document.createElement('article');
-    card.className = `level-overview-card ${activeCount >= 3 ? 'hotspot' : ''}`;
+    card.className = 'level-overview-card';
     card.innerHTML = `<div class="level-overview-head">
       <div>
         <h3>${escapeHtml(label)}</h3>
         <div class="help">${levelRows.length} anomalie${levelRows.length > 1 ? 's' : ''} visible${levelRows.length > 1 ? 's' : ''}</div>
-      </div>
-      <div class="level-overview-status">
-        <span class="level-count red">${levelRows.filter(a => a.status === 'a_traiter').length}</span>
-        <span class="level-count orange">${levelRows.filter(a => a.status === 'en_cours').length}</span>
-        <span class="level-count green">${levelRows.filter(a => a.status === 'resolu').length}</span>
       </div>
     </div><div class="level-plan-composite"></div>`;
 
@@ -301,10 +203,7 @@ function renderAll() {
   const rows = filteredAnomalies();
   renderKpis(rows);
   if (currentUser?.isAdmin) {
-    renderQuickFilters();
     renderPriorityPanels(rows);
-    renderStatusChart(rows);
-    renderOverviewStats(rows);
     renderGlobalPlans(rows);
   }
   renderList(rows);
@@ -607,18 +506,8 @@ async function init() {
   els.changePassword.addEventListener('click', openChangePasswordModal);
   els.manageUsers.addEventListener('click', openUsersModal);
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
-  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', () => {
-    if (x === els.filterStatus) quickFilter = 'all';
-    renderAll();
-  }));
+  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
   els.filterSearch.addEventListener('input', renderAll);
-  document.querySelectorAll('[data-quick-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      quickFilter = button.dataset.quickFilter || 'all';
-      els.filterStatus.value = 'all';
-      renderAll();
-    });
-  });
 
   if (demo) {
     window.addEventListener('keydown', e => {
