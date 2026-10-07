@@ -48,6 +48,21 @@ service cloud.firestore {
         && request.resource.data.resolutionPhotoUrl == null;
     }
 
+    match /room_status/{roomId} {
+      // Expose uniquement l'état technique de la pièce, jamais le détail des incidents.
+      allow read: if true;
+
+      // Un agent anonyme peut seulement marquer une pièce comme active (rouge)
+      // après création d'un signalement. Seul Infra peut la remettre à false.
+      allow create, update: if (
+          isAnonymous()
+          && request.resource.data.keys().hasOnly(['active', 'updatedAt'])
+          && request.resource.data.active == true
+        ) || isInfra();
+
+      allow delete: if isInfra();
+    }
+
     match /anomalies/{anomalyId} {
       // L'agent terrain est authentifié anonymement de façon invisible.
       // Il peut uniquement créer son signalement.
