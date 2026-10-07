@@ -126,7 +126,7 @@ function openAnomalyModal(id) {
   const a = anomalies.find(x => x.id === id); if (!a) return;
   const room = getRoom(a.roomId);
   const level = room ? PLAN_CONFIG[room.buildingId]?.levels?.[room.levelId] : null;
-  modal(`<div class="modal-head"><div><h2>${a.urgent?'🚨 ':''}${escapeHtml(a.description)}</h2><div class="help">${escapeHtml(room?.buildingLabel || '')} • ${escapeHtml(room?.levelLabel || '')} • ${escapeHtml(a.roomName || '')}</div></div><button class="icon-btn" data-close>×</button></div>
+  modal(`<div class="modal-head"><div><h2>${a.urgent?'🚨 ':''}${escapeHtml(a.description)}</h2><div class="help">${escapeHtml(room?.buildingLabel || '')} • ${escapeHtml(room?.levelLabel || '')}${room?.zoneLabel ? ' • ' + escapeHtml(room.zoneLabel) : ''} • ${escapeHtml(a.roomName || '')}</div></div><button class="icon-btn" data-close>×</button></div>
     ${room && level ? '<div class="incident-room-zoom-wrap"><div class="incident-room-zoom-title">Pièce concernée</div><div id="incident-room-zoom" class="incident-room-zoom"></div></div>' : ''}
     <div class="detail-grid"><div class="detail-item"><strong>Signalé par</strong>${escapeHtml(`${a.reporterFirstName||''} ${a.reporterLastName||''}`.trim() || 'Service Infra')}</div><div class="detail-item"><strong>Date</strong>${formatDate(a.createdAt)}</div><div class="detail-item"><strong>Catégorie</strong>${escapeHtml(a.category || 'Autre')}</div><div class="detail-item"><strong>Statut</strong>${statusBadge(a.status)}</div></div>
     <form id="update-form"><div class="form-grid">
@@ -143,6 +143,7 @@ function openAnomalyModal(id) {
   if (room && level) {
     const zoom = $('#incident-room-zoom');
     renderPlan(zoom, room.buildingId, room.levelId, {
+      zoneId: room.zoneId,
       mode: 'infra',
       anomalies: [a],
       selectedRoomId: room.id,
