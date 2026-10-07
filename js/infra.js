@@ -203,6 +203,30 @@ function modal(content) {
 }
 function closeModal() { els.modalRoot.innerHTML = ''; }
 
+function openOverviewRoom(roomId) {
+  const room = getRoom(roomId);
+  const rows = filteredAnomalies().filter(a => a.roomId === roomId);
+  if (!rows.length) {
+    toast('Aucune anomalie correspondant aux filtres pour cette pièce.');
+    return;
+  }
+  if (rows.length === 1) {
+    openAnomalyModal(rows[0].id);
+    return;
+  }
+
+  modal(`<div class="modal-head"><div><h2>${escapeHtml(room?.name || 'Pièce')}</h2><div class="help">${rows.length} anomalies correspondant aux filtres</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="room-popup-list">${rows.map(a => `<article class="anomaly-card ${a.urgent ? 'urgent' : ''}">
+      <div class="anomaly-top"><strong>${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description)}</strong>${statusBadge(a.status)}</div>
+      <div class="anomaly-meta"><span>${escapeHtml(a.category || 'Autre')}</span><span>${formatDate(a.createdAt)}</span></div>
+      <div class="submit-row" style="margin-top:8px"><button type="button" class="secondary overview-open" data-id="${escapeHtml(a.id)}">Ouvrir</button></div>
+    </article>`).join('')}</div>`);
+
+  els.modalRoot.querySelectorAll('.overview-open').forEach(button => {
+    button.addEventListener('click', () => openAnomalyModal(button.dataset.id));
+  });
+}
+
 function resolveLoginEmail(value) {
   const raw = String(value || '').trim().toLowerCase();
   if ([INFRA_OPERATOR, 'infra-lvn'].includes(raw)) return INFRA_AUTH_EMAIL;
@@ -468,8 +492,8 @@ async function init() {
   els.changePassword.addEventListener('click', openChangePasswordModal);
   els.manageUsers.addEventListener('click', openUsersModal);
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
-  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderList));
-  els.filterSearch.addEventListener('input', renderList);
+  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
+  els.filterSearch.addEventListener('input', renderAll);
 
   if (demo) {
     window.addEventListener('keydown', e => {
