@@ -100,7 +100,7 @@ jobs:
             local release_name="$1"
             local ruleset_name="$2"
             local payload response status
-            payload="$(jq -n --arg rulesetName "$ruleset_name" '{release:{rulesetName:$rulesetName},updateMask:"rulesetName"}')"
+            payload="$(jq -n --arg name "projects/$PROJECT_ID/releases/$release_name" --arg rulesetName "$ruleset_name" '{release:{name:$name,rulesetName:$rulesetName}}')"
 
             response="$(curl --silent --show-error               -X PATCH               -H "Authorization: Bearer $ACCESS_TOKEN"               -H "Content-Type: application/json"               -d "$payload"               -w $'\n%{http_code}'               "https://firebaserules.googleapis.com/v1/projects/$PROJECT_ID/releases/$release_name")"
 
