@@ -107,7 +107,12 @@ function renderCurrentPlan() {
     <div class="plan-canvas"></div>
   `;
 
-  renderPlan(card.querySelector('.plan-canvas'), selectedBuilding, selectedLevel, {
+  const canvas = card.querySelector('.plan-canvas');
+  const vb = zone.viewBox || { width: 100, height: 100 };
+  canvas.style.aspectRatio = `${vb.width} / ${vb.height}`;
+  canvas.style.minHeight = '0';
+
+  renderPlan(canvas, selectedBuilding, selectedLevel, {
     zoneId: selectedZone,
     mode: 'public',
     roomStatus,
