@@ -10,11 +10,58 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
-    // Compte Infra commun autorisé.
-    function isInfra() {
+    function isPasswordUser() {
       return signedIn()
-        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    // Compte administrateur historique. Ce garde-fou permet d'amorcer
+    // automatiquement son profil administrateur dans /users/{uid}.
+    function isBootstrapAdmin() {
+      return isPasswordUser()
         && request.auth.token.email == 'lolo.dalzotto@gmail.com';
+    }
+
+    function hasInfraProfile() {
+      return isPasswordUser()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function infraProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isInfra() {
+      return isBootstrapAdmin()
+        || (hasInfraProfile()
+          && infraProfile().active == true
+          && infraProfile().role in ['admin', 'infra']);
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin()
+        || (hasInfraProfile()
+          && infraProfile().active == true
+          && infraProfile().role == 'admin');
+    }
+
+    function validInfraProfile(uid) {
+      return request.resource.data.keys().hasOnly([
+          'firstName', 'lastName', 'email', 'role', 'active',
+          'createdAt', 'updatedAt', 'createdByUid'
+        ])
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.firstName.size() <= 60
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.lastName.size() <= 60
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() <= 160
+        && request.resource.data.role in ['admin', 'infra']
+        && request.resource.data.active is bool
+        && request.resource.data.createdByUid is string;
     }
 
     function validPublicReport() {
@@ -48,12 +95,41 @@ service cloud.firestore {
         && request.resource.data.resolutionPhotoUrl == null;
     }
 
+    match /users/{uid} {
+      // Un membre peut lire son propre profil. L'administrateur voit tous
+      // les membres afin de gérer les autorisations.
+      allow read: if isAdmin() || (isPasswordUser() && request.auth.uid == uid);
+
+      // Le compte administrateur historique peut créer son propre profil
+      // admin à la première connexion. Tous les autres comptes sont "infra".
+      allow create: if isAdmin()
+        && validInfraProfile(uid)
+        && (
+          (uid == request.auth.uid
+            && isBootstrapAdmin()
+            && request.resource.data.role == 'admin'
+            && request.resource.data.active == true)
+          || (uid != request.auth.uid && request.resource.data.role == 'infra')
+        );
+
+      // Les rôles ne sont jamais modifiables depuis le navigateur.
+      // Le profil admin ne peut pas être désactivé.
+      allow update: if isAdmin()
+        && validInfraProfile(uid)
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && (
+          resource.data.role != 'admin'
+          || request.resource.data.active == true
+        );
+
+      // On conserve les profils pour l'audit ; une révocation passe par active=false.
+      allow delete: if false;
+    }
+
     match /room_status/{roomId} {
-      // Expose uniquement l'état technique de la pièce, jamais le détail des incidents.
       allow read: if true;
 
-      // Un agent anonyme peut seulement marquer une pièce comme active (rouge)
-      // après création d'un signalement. Seul Infra peut la remettre à false.
       allow create, update: if (
           isAnonymous()
           && request.resource.data.keys().hasOnly(['active', 'updatedAt'])
@@ -64,11 +140,7 @@ service cloud.firestore {
     }
 
     match /anomalies/{anomalyId} {
-      // L'agent terrain est authentifié anonymement de façon invisible.
-      // Il peut uniquement créer son signalement.
       allow create: if (isAnonymous() && validPublicReport()) || isInfra();
-
-      // Lecture et gestion réservées au compte Infra commun.
       allow read, update, delete: if isInfra();
     }
   }
