@@ -26,6 +26,7 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
 }
 
 export function renderPlan(container, buildingId, levelId, {
+  zoneId = null,
   mode = 'public',
   anomalies = [],
   selectedRoomId = null,
@@ -33,12 +34,15 @@ export function renderPlan(container, buildingId, levelId, {
 } = {}) {
   const level = PLAN_CONFIG[buildingId]?.levels[levelId];
   if (!level) return;
+  const resolvedZoneId = zoneId && level.zones?.[zoneId] ? zoneId : Object.keys(level.zones || {})[0];
+  const zone = level.zones?.[resolvedZoneId];
+  if (!zone) return;
 
   const svgNs = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(svgNs, 'svg');
   svg.setAttribute('viewBox', '0 0 100 100');
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', `${PLAN_CONFIG[buildingId].label} — ${level.label}`);
+  svg.setAttribute('aria-label', `${PLAN_CONFIG[buildingId].label} — ${level.label} — ${zone.label}`);
   svg.classList.add('plan-svg');
 
   const outer = document.createElementNS(svgNs, 'rect');
@@ -46,11 +50,15 @@ export function renderPlan(container, buildingId, levelId, {
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
   svg.appendChild(outer);
 
-  level.rooms.forEach((room) => {
+  zone.rooms.forEach((room) => {
     const group = document.createElementNS(svgNs, 'g');
     group.classList.add('plan-room');
-    const active = mode === 'infra' && roomHasActiveAnomaly(room.id, anomalies);
-    group.classList.add(active ? 'room-red' : 'room-green');
+    if (mode === 'infra') {
+      const active = roomHasActiveAnomaly(room.id, anomalies);
+      group.classList.add(active ? 'room-red' : 'room-green');
+    } else {
+      group.classList.add('room-neutral');
+    }
     if (selectedRoomId === room.id) group.classList.add('room-selected');
     group.setAttribute('tabindex', '0');
     group.setAttribute('role', 'button');
@@ -73,7 +81,7 @@ export function renderPlan(container, buildingId, levelId, {
     code.setAttribute('y', room.y + room.h / 2 + 7);
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
-    code.textContent = room.id.split('-').slice(-1)[0];
+    code.textContent = room.code || room.id.split('-').slice(-1)[0];
 
     const activate = () => onRoomClick(room);
     group.addEventListener('click', activate);
