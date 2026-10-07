@@ -27,12 +27,9 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
 
 function buildRoomLabelLayout(room) {
   const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return { lines: [], fontSize: 0.8, lineGap: 1, showCode: false, codeSize: 0.65 };
-
-  const maxLines = room.h < 2.8 ? 1 : room.h < 5 ? 2 : room.h < 9 ? 3 : 4;
-  const availableW = Math.max(0.8, room.w * 0.78);
-  const availableH = Math.max(0.8, room.h * 0.68);
-  let best = null;
+  if (!words.length) {
+    return { lines: [], fontSize: 0.8, lineGap: 1, showCode: false, codeSize: 0.65, rotate: false };
+  }
 
   const splitInto = (count) => {
     if (count <= 1 || words.length === 1) return [words.join(' ')];
@@ -59,26 +56,44 @@ function buildRoomLabelLayout(room) {
     return lines;
   };
 
-  for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
-    const lines = splitInto(count);
-    const longest = Math.max(...lines.map(line => line.length), 1);
-    const sizeByWidth = availableW / (longest * 0.64);
-    const sizeByHeight = availableH / (lines.length * 1.28);
-    const fontSize = Math.max(0.32, Math.min(1.45, sizeByWidth, sizeByHeight));
-    if (!best || fontSize > best.fontSize) best = { lines, fontSize };
-  }
+  const fit = (width, height, rotate) => {
+    const maxLines = height < 2.8 ? 1 : height < 5 ? 2 : height < 9 ? 3 : 4;
+    const availableW = Math.max(0.7, width * 0.78);
+    const availableH = Math.max(0.7, height * 0.68);
+    let best = null;
 
-  const lineGap = Math.max(0.44, best.fontSize * 1.22);
-  const projectedTextHeight = best.lines.length * lineGap;
-  const showCode = !!room.code
-    && room.h >= 5.2
-    && projectedTextHeight + Math.max(0.6, best.fontSize * 0.9) <= room.h * 0.72;
-  return {
-    ...best,
-    lineGap,
-    showCode,
-    codeSize: Math.max(0.3, Math.min(0.9, best.fontSize * 0.66))
+    for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
+      const lines = splitInto(count);
+      const longest = Math.max(...lines.map(line => line.length), 1);
+      const sizeByWidth = availableW / (longest * 0.64);
+      const sizeByHeight = availableH / (lines.length * 1.28);
+      const fontSize = Math.max(0.28, Math.min(1.45, sizeByWidth, sizeByHeight));
+      if (!best || fontSize > best.fontSize) best = { lines, fontSize };
+    }
+
+    const lineGap = Math.max(0.4, best.fontSize * 1.22);
+    const projectedTextHeight = best.lines.length * lineGap;
+    const showCode = !!room.code
+      && height >= 5.2
+      && projectedTextHeight + Math.max(0.55, best.fontSize * 0.9) <= height * 0.72;
+
+    return {
+      ...best,
+      lineGap,
+      showCode,
+      codeSize: Math.max(0.28, Math.min(0.88, best.fontSize * 0.66)),
+      rotate
+    };
   };
+
+  const horizontal = fit(room.w, room.h, false);
+  const vertical = fit(room.h, room.w, true);
+
+  const tallNarrow = room.h > room.w * 1.18;
+  const verticalClearlyBetter = vertical.fontSize > horizontal.fontSize * 1.14;
+  const horizontalVerySmall = horizontal.fontSize < 0.5 && vertical.fontSize > horizontal.fontSize * 1.05;
+
+  return (tallNarrow && (verticalClearlyBetter || horizontalVerySmall)) ? vertical : horizontal;
 }
 
 function enablePlanNavigation(container, svg) {
@@ -344,6 +359,7 @@ export function renderPlan(container, buildingId, levelId, {
     label.setAttribute('text-anchor', 'middle');
     label.classList.add('room-label');
     label.setAttribute('font-size', String(layout.fontSize));
+    if (layout.rotate) label.setAttribute('transform', `rotate(90 ${centerX} ${centerY})`);
 
     const labelBlockHeight = Math.max(0, (layout.lines.length - 1) * layout.lineGap);
     const codeOffset = layout.showCode ? layout.lineGap * 0.42 : 0;
@@ -363,6 +379,7 @@ export function renderPlan(container, buildingId, levelId, {
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
     code.setAttribute('font-size', String(layout.codeSize));
+    if (layout.rotate) code.setAttribute('transform', `rotate(90 ${centerX} ${centerY})`);
     code.textContent = layout.showCode ? (room.code || '') : '';
 
     const activate = () => {
