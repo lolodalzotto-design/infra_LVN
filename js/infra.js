@@ -153,12 +153,15 @@ function openAnomalyModal(id) {
     if (svg) {
       const zone = level?.zones?.[room.zoneId];
       const vb = zone?.viewBox || { width: 100, height: 100 };
+      const scaleY = zone?.coordinateScaleY || 1;
+      const roomY = room.y * scaleY;
+      const roomH = room.h * scaleY;
       const padX = Math.max(2.5, room.w * 0.28);
-      const padY = Math.max(2.5, room.h * 0.28);
+      const padY = Math.max(2.5, roomH * 0.28);
       const x = Math.max(0, room.x - padX);
-      const y = Math.max(0, room.y - padY);
+      const y = Math.max(0, roomY - padY);
       const w = Math.min(vb.width - x, room.w + padX * 2);
-      const h = Math.min(vb.height - y, room.h + padY * 2);
+      const h = Math.min(vb.height - y, roomH + padY * 2);
       svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     }
