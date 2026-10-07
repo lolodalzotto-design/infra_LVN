@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-active-list-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-active-list-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-bell-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-bell-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-active-list-1';
+} from './store.js?v=20261007-bell-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -19,6 +19,7 @@ let anomalies = [];
 let unsubscribe = null;
 let profileUnsubscribe = null;
 let currentUser = null;
+let newAdminAnomalies = [];
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -27,6 +28,7 @@ const els = {
   forgotPassword: $('#forgot-password-btn'), changePassword: $('#change-password-btn'),
   manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
+  notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
@@ -51,6 +53,99 @@ function closeTopMenu() {
   setTopMenu(false);
 }
 
+
+function notificationStorageKey() {
+  return `infra_lvn_admin_notifications_last_seen_${currentUser?.uid || 'admin'}`;
+}
+
+function anomalyCreatedMs(value) {
+  if (!value) return 0;
+  try {
+    const date = value?.toDate ? value.toDate() : new Date(value);
+    const ms = date.getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function readNotificationLastSeen() {
+  try {
+    const raw = localStorage.getItem(notificationStorageKey());
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeNotificationLastSeen(value) {
+  try {
+    localStorage.setItem(notificationStorageKey(), String(value));
+  } catch {}
+}
+
+function setNotificationCount(count) {
+  const safeCount = Math.max(0, Number(count) || 0);
+  els.notificationBadge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+  els.notificationBadge.classList.toggle('hidden', safeCount === 0);
+  els.notificationButton.classList.toggle('has-new', safeCount > 0);
+}
+
+function updateAdminNotifications(rows) {
+  if (!currentUser?.isAdmin) {
+    newAdminAnomalies = [];
+    setNotificationCount(0);
+    return;
+  }
+
+  const datedRows = rows
+    .map((anomaly) => ({ anomaly, createdMs: anomalyCreatedMs(anomaly.createdAt) }))
+    .filter((item) => item.createdMs > 0);
+
+  let lastSeen = readNotificationLastSeen();
+  if (!lastSeen) {
+    const baseline = datedRows.length
+      ? Math.max(...datedRows.map((item) => item.createdMs))
+      : Date.now();
+    writeNotificationLastSeen(baseline);
+    lastSeen = baseline;
+  }
+
+  newAdminAnomalies = datedRows
+    .filter((item) => item.createdMs > lastSeen)
+    .sort((a, b) => b.createdMs - a.createdMs)
+    .map((item) => item.anomaly);
+
+  setNotificationCount(newAdminAnomalies.length);
+}
+
+function openAdminNotifications() {
+  if (!currentUser?.isAdmin) return;
+
+  const rows = [...newAdminAnomalies];
+  const latestCreated = rows.reduce((max, anomaly) => Math.max(max, anomalyCreatedMs(anomaly.createdAt)), 0);
+  writeNotificationLastSeen(Math.max(Date.now(), latestCreated));
+  newAdminAnomalies = [];
+  setNotificationCount(0);
+
+  modal(`<div class="modal-head"><div><h2>Nouveaux signalements</h2><div class="help">${rows.length ? `${rows.length} nouveauté${rows.length > 1 ? 's' : ''}` : 'Aucune nouveauté'}</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="notification-list">${rows.length ? rows.map((a) => {
+      const room = getRoom(a.roomId);
+      return `<button type="button" class="notification-item" data-notification-id="${escapeHtml(a.id)}">
+        <span class="notification-item-main">
+          <strong>${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description || 'Nouvelle anomalie')}</strong>
+          <small>${escapeHtml(room?.levelLabel || a.levelId || '')} · ${escapeHtml(a.roomName || room?.name || '')} · ${formatDate(a.createdAt)}</small>
+        </span>
+        <span>${statusBadge(a.status)}</span>
+      </button>`;
+    }).join('') : '<div class="priority-empty">Aucun nouveau signalement depuis votre dernière consultation.</div>'}</div>`);
+
+  els.modalRoot.querySelectorAll('[data-notification-id]').forEach((button) => {
+    button.addEventListener('click', () => openAnomalyModal(button.dataset.notificationId));
+  });
+}
+
 async function openShell(profile = null) {
   currentUser = profile || await getCurrentInfraUser();
   if (!currentUser?.authorized) throw new Error('Compte non autorisé.');
@@ -60,8 +155,14 @@ async function openShell(profile = null) {
   closeTopMenu();
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
+  els.notificationButton.classList.toggle('hidden', !currentUser.isAdmin);
   document.querySelectorAll('.admin-overview').forEach(node => node.classList.toggle('hidden', !currentUser.isAdmin));
-  if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
+  if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => {
+    anomalies = rows;
+    updateAdminNotifications(rows);
+    renderAll();
+    syncRoomStatuses(rows).catch(() => {});
+  });
   if (!profileUnsubscribe) {
     profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
       if (profile?.authorized || !currentUser) return;
@@ -75,7 +176,8 @@ async function openShell(profile = null) {
 function closeShell() {
   currentUser = null;
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
-  els.manageUsers.classList.add('hidden'); els.currentUser.textContent = ''; closeTopMenu();
+  els.manageUsers.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
+  newAdminAnomalies = []; els.currentUser.textContent = ''; closeTopMenu();
   unsubscribe?.(); unsubscribe = null;
   profileUnsubscribe?.(); profileUnsubscribe = null;
 }
@@ -562,6 +664,11 @@ async function init() {
   els.changePassword.addEventListener('click', () => { closeTopMenu(); openChangePasswordModal(); });
   els.manageUsers.addEventListener('click', () => { closeTopMenu(); openUsersModal(); });
   els.logout.addEventListener('click', async () => { closeTopMenu(); await logoutInfra(); closeShell(); });
+  els.notificationButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeTopMenu();
+    openAdminNotifications();
+  });
   els.topMenuButton.addEventListener('click', (event) => {
     event.stopPropagation();
     setTopMenu(els.topMenu.classList.contains('hidden'));

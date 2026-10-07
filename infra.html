@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d223a" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Espace Infra — LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261007-active-list-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261007-bell-1" />
 </head>
 <body>
 <main>
@@ -27,16 +27,22 @@
       <header class="infra-topbar">
         <div class="infra-topbar-brand">INFRA LVN</div>
         <div id="current-user" class="current-user infra-topbar-user"></div>
-        <div class="infra-menu-wrap">
-          <button id="top-menu-button" class="infra-menu-button" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="top-menu">
-            <span></span><span></span><span></span>
+        <div class="infra-topbar-actions">
+          <button id="notification-button" class="notification-button hidden" type="button" aria-label="Nouveaux signalements" title="Nouveaux signalements">
+            <span class="notification-bell" aria-hidden="true">🔔</span>
+            <span id="notification-badge" class="notification-badge hidden">0</span>
           </button>
-          <nav id="top-menu" class="infra-menu hidden" aria-label="Menu Infrastructure">
+          <div class="infra-menu-wrap">
+            <button id="top-menu-button" class="infra-menu-button" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="top-menu">
+              <span></span><span></span><span></span>
+            </button>
+            <nav id="top-menu" class="infra-menu hidden" aria-label="Menu Infrastructure">
             <a class="infra-menu-item infra-menu-primary" href="./index.html">Signaler une anomalie</a>
             <button id="manage-users-btn" class="infra-menu-item hidden" type="button">Gérer les accès</button>
             <button id="change-password-btn" class="infra-menu-item" type="button">Modifier mon mot de passe</button>
             <button id="logout-btn" class="infra-menu-item infra-menu-danger hidden" type="button">Déconnexion</button>
-          </nav>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -110,6 +116,6 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261007-active-list-1"></script>
+  <script type="module" src="./js/infra.js?v=20261007-bell-1"></script>
 </body>
 </html>
