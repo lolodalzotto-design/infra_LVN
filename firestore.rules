@@ -31,7 +31,7 @@ service cloud.firestore {
         && request.resource.data.roomId is string
         && request.resource.data.roomName is string
         && request.resource.data.buildingId in ['A', 'B']
-        && request.resource.data.levelId in ['RDC', 'R1']
+        && request.resource.data.levelId in ['RDC', 'R1', 'R2']
         && request.resource.data.reporterFirstName is string
         && request.resource.data.reporterFirstName.size() > 0
         && request.resource.data.reporterFirstName.size() <= 60
