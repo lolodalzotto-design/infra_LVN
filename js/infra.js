@@ -2,7 +2,7 @@ import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js';
 import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra,
-  subscribeAnomalies, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
+  subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
 } from './store.js';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
@@ -35,7 +35,7 @@ function openShell() {
   els.loginWrap.classList.add('hidden');
   els.shell.classList.add('active');
   els.logout.classList.remove('hidden');
-  if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); });
+  if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
 }
 
 function closeShell() {
