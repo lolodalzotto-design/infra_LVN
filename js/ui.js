@@ -223,9 +223,19 @@ export function renderPlan(container, buildingId, levelId, {
     group.setAttribute('role', 'button');
     group.setAttribute('aria-label', room.name);
 
-    const rect = document.createElementNS(svgNs, 'rect');
-    rect.setAttribute('x', room.x); rect.setAttribute('y', room.y); rect.setAttribute('width', room.w); rect.setAttribute('height', room.h);
-    rect.setAttribute('rx', '1.6');
+    let shape;
+    if (Array.isArray(room.points) && room.points.length >= 3) {
+      shape = document.createElementNS(svgNs, 'polygon');
+      shape.setAttribute('points', room.points.map(p => `${p[0]},${p[1]}`).join(' '));
+    } else {
+      shape = document.createElementNS(svgNs, 'rect');
+      shape.setAttribute('x', room.x);
+      shape.setAttribute('y', room.y);
+      shape.setAttribute('width', room.w);
+      shape.setAttribute('height', room.h);
+      shape.setAttribute('rx', '0.6');
+    }
+    shape.classList.add('plan-shape');
 
     const label = document.createElementNS(svgNs, 'text');
     label.setAttribute('x', room.x + room.w / 2);
@@ -255,7 +265,7 @@ export function renderPlan(container, buildingId, levelId, {
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(); }
     });
 
-    group.append(rect, label, code);
+    group.append(shape, label, code);
     svg.appendChild(group);
   });
 
