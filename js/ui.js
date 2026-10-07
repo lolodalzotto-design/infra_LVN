@@ -120,11 +120,15 @@ function enablePlanNavigation(container, svg) {
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointers.size === 1) {
+      // À l'échelle initiale, un léger mouvement du doigt ne doit pas empêcher
+      // le tap sur une pièce. Le déplacement devient actif dès qu'on a zoomé.
+      if (view.w >= BASE.w - 0.01 && view.h >= BASE.h - 0.01) return;
+
       const before = clientToSvg(previous.x, previous.y);
       const after = clientToSvg(event.clientX, event.clientY);
       const dx = after.x - before.x;
       const dy = after.y - before.y;
-      if (Math.abs(event.clientX - previous.x) + Math.abs(event.clientY - previous.y) > 1) moved = true;
+      if (Math.abs(event.clientX - previous.x) + Math.abs(event.clientY - previous.y) > 3) moved = true;
       view.x -= dx;
       view.y -= dy;
       clampView();
