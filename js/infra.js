@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-users-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-users-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-users-2';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-users-2';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
-  setInfraUserActive, resendInfraPasswordReset,
+  setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-users-1';
+} from './store.js?v=20261007-users-2';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -43,7 +43,7 @@ async function openShell(profile = null) {
   els.loginWrap.classList.add('hidden');
   els.shell.classList.add('active');
   els.logout.classList.remove('hidden');
-  els.currentUser.textContent = `${currentUser.fullName} • ${currentUser.isAdmin ? 'Administrateur' : 'Service Infrastructure'}`;
+  els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
   if (!profileUnsubscribe) {
@@ -137,7 +137,7 @@ function buildActionLabel(anomaly, formData, nextStatus) {
 function openForgotPasswordModal() {
   const initial = els.username.value.trim();
   modal(`<div class="modal-head"><div><h2>Mot de passe oublié</h2><div class="help">Un lien de réinitialisation sera envoyé à l’adresse e-mail du compte.</div></div><button class="icon-btn" data-close>×</button></div>
-    <form id="forgot-form"><div class="form-grid"><div class="field full"><label>Identifiant admin ou adresse e-mail *</label><input name="login" type="text" autocomplete="username" required value="${escapeHtml(initial)}" placeholder="infra_lvn ou nom@exemple.fr"></div></div>
+    <form id="forgot-form"><div class="form-grid"><div class="field full"><label>Adresse e-mail *</label><input name="login" type="text" autocomplete="username" required value="${escapeHtml(initial)}" placeholder="votre adresse e-mail"></div></div>
     <div class="submit-row"><button type="button" class="secondary" data-close>Annuler</button><button class="primary" type="submit">Envoyer le lien</button></div></form>`);
   $('#forgot-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -158,7 +158,7 @@ function openForgotPasswordModal() {
 }
 
 function openChangePasswordModal() {
-  modal(`<div class="modal-head"><div><h2>Modifier mon mot de passe</h2><div class="help">${escapeHtml(currentUser?.fullName || '')}</div></div><button class="icon-btn" data-close>×</button></div>
+  modal(`<div class="modal-head"><div><h2>Modifier mon mot de passe</h2><div class="help">${escapeHtml(currentUser?.isAdmin ? 'Session administrateur' : (currentUser?.fullName || ''))}</div></div><button class="icon-btn" data-close>×</button></div>
     <form id="password-form"><div class="form-grid">
       <div class="field full"><label>Mot de passe actuel *</label><input name="currentPassword" type="password" autocomplete="current-password" required></div>
       <div class="field full"><label>Nouveau mot de passe *</label><input name="newPassword" type="password" autocomplete="new-password" minlength="8" required></div>
@@ -192,12 +192,11 @@ async function openUsersModal() {
     modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service Infrastructure. Une révocation coupe immédiatement l’accès aux données Infra.</div></div><button class="icon-btn" data-close>×</button></div>
       <div class="account-list">${users.map((u) => `<article class="account-card">
         <div class="account-main">
-          <div class="account-name">${escapeHtml(u.fullName || 'Utilisateur')}</div>
-          <div class="account-email">${escapeHtml(u.email || '')}</div>
+          <div class="account-name">${u.role === 'admin' ? 'Session administrateur' : escapeHtml(u.fullName || 'Utilisateur')}</div>
+          <div class="account-email">${u.role === 'admin' ? '' : escapeHtml(u.email || '')}</div>
           <div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'Infrastructure'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div>
         </div>
         <div class="account-actions">
-          <button class="secondary account-reset" type="button" data-email="${escapeHtml(u.email || '')}">Réinitialiser le mot de passe</button>
           ${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Révoquer l’accès' : 'Réactiver'}</button>`}
         </div>
       </article>`).join('')}</div>
@@ -206,18 +205,12 @@ async function openUsersModal() {
         <div class="form-grid">
           <div class="field"><label>Prénom *</label><input name="firstName" required maxlength="60" autocomplete="off"></div>
           <div class="field"><label>Nom *</label><input name="lastName" required maxlength="60" autocomplete="off"></div>
-          <div class="field full"><label>Adresse e-mail personnelle *</label><input name="email" type="email" required maxlength="160" autocomplete="off"></div>
+          <div class="field full"><label>Adresse e-mail *</label><input name="email" type="email" required maxlength="160" autocomplete="off"></div>
+          <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
         </div>
-        <div class="help">Le compte est créé automatiquement et l’utilisateur reçoit un e-mail pour définir son propre mot de passe.</div>
+        <div class="help">Le compte est créé avec ce mot de passe initial. Ensuite, l’utilisateur peut modifier son mot de passe ou utiliser « Mot de passe oublié ? » avec son adresse e-mail.</div>
         <div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div>
       </form>`);
-
-    els.modalRoot.querySelectorAll('.account-reset').forEach((button) => button.addEventListener('click', async () => {
-      button.disabled = true;
-      try { await resendInfraPasswordReset(button.dataset.email); toast('E-mail de réinitialisation envoyé.'); }
-      catch { toast('Impossible d’envoyer l’e-mail.'); }
-      finally { button.disabled = false; }
-    }));
 
     els.modalRoot.querySelectorAll('.account-toggle').forEach((button) => button.addEventListener('click', async () => {
       const activate = button.dataset.active !== '1';
@@ -242,11 +235,10 @@ async function openUsersModal() {
         const created = await createInfraUser({
           firstName: String(fd.get('firstName') || '').trim(),
           lastName: String(fd.get('lastName') || '').trim(),
-          email: String(fd.get('email') || '').trim()
+          email: String(fd.get('email') || '').trim(),
+          initialPassword: String(fd.get('initialPassword') || '')
         });
-        toast(created.resetEmailSent
-          ? `Compte de ${created.fullName} créé. E-mail envoyé.`
-          : `Compte de ${created.fullName} créé. Utilisez « Réinitialiser le mot de passe » pour renvoyer l’e-mail.`);
+        toast(`Compte de ${created.fullName} créé avec son mot de passe initial.`);
         closeModal();
         await openUsersModal();
       } catch (err) {

@@ -29,13 +29,6 @@ function fullName(profile = {}) {
   return `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
 }
 
-function secureTemporaryPassword() {
-  const bytes = new Uint32Array(5);
-  globalThis.crypto?.getRandomValues?.(bytes);
-  const token = Array.from(bytes, (n) => n.toString(36)).join('');
-  return `Lvn!${token}Aa9`;
-}
-
 function seedDemoIfNeeded() {
   if (localStorage.getItem(DEMO_KEY)) return;
   const now = Date.now();
@@ -307,7 +300,7 @@ export async function listInfraUsers() {
     });
 }
 
-export async function createInfraUser({ firstName, lastName, email }) {
+export async function createInfraUser({ firstName, lastName, email, initialPassword }) {
   if (APP_MODE === 'demo') throw new Error('Création indisponible en mode démo.');
   const current = await getCurrentInfraUser();
   if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
@@ -315,7 +308,9 @@ export async function createInfraUser({ firstName, lastName, email }) {
   const normalized = normalizeEmail(email);
   const first = String(firstName || '').trim();
   const last = String(lastName || '').trim();
+  const password = String(initialPassword || '');
   if (!first || !last || !normalized) throw new Error('Nom, prénom et e-mail sont obligatoires.');
+  if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
 
   const { db, fsMod, appMod, authMod } = await getFirebase();
   const secondaryApp = appMod.initializeApp(firebaseConfig, `infra-create-${uid()}`);
@@ -327,7 +322,7 @@ export async function createInfraUser({ firstName, lastName, email }) {
     const credential = await authMod.createUserWithEmailAndPassword(
       secondaryAuth,
       normalized,
-      secureTemporaryPassword()
+      password
     );
     createdUser = credential.user;
     await authMod.updateProfile(createdUser, { displayName: `${first} ${last}` });
@@ -344,14 +339,6 @@ export async function createInfraUser({ firstName, lastName, email }) {
     });
     profileCreated = true;
 
-    let resetEmailSent = true;
-    try {
-      const { auth } = await getFirebase();
-      await authMod.sendPasswordResetEmail(auth, normalized);
-    } catch {
-      resetEmailSent = false;
-    }
-
     return {
       uid: createdUser.uid,
       firstName: first,
@@ -359,8 +346,7 @@ export async function createInfraUser({ firstName, lastName, email }) {
       email: normalized,
       role: 'infra',
       active: true,
-      fullName: `${first} ${last}`,
-      resetEmailSent
+      fullName: `${first} ${last}`
     };
   } catch (error) {
     if (createdUser && !profileCreated) {
@@ -386,9 +372,6 @@ export async function setInfraUserActive(userId, active) {
   });
 }
 
-export async function resendInfraPasswordReset(email) {
-  return sendInfraPasswordReset(email);
-}
 
 async function uploadPhoto(file, kind = 'reports') {
   if (!file) return null;
