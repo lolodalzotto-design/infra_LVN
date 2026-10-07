@@ -44,7 +44,7 @@ async function openShell(profile = null) {
   els.shell.classList.add('active');
   els.logout.classList.remove('hidden');
   els.currentUser.textContent = `${currentUser.fullName} • ${currentUser.isAdmin ? 'Administrateur' : 'Service Infrastructure'}`;
-  els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin);
+  els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
   if (!profileUnsubscribe) {
     profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
