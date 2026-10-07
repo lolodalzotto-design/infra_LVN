@@ -1,7 +1,7 @@
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-users-1';
 import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-users-1';
 import {
-  getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser,
+  getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive, resendInfraPasswordReset,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
@@ -17,6 +17,7 @@ const LOGIN_ERROR = 'Identifiant ou mot de passe incorrect.';
 
 let anomalies = [];
 let unsubscribe = null;
+let profileUnsubscribe = null;
 let currentUser = null;
 
 const $ = (s) => document.querySelector(s);
@@ -45,6 +46,14 @@ async function openShell(profile = null) {
   els.currentUser.textContent = `${currentUser.fullName} • ${currentUser.isAdmin ? 'Administrateur' : 'Service Infrastructure'}`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin);
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
+  if (!profileUnsubscribe) {
+    profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
+      if (profile?.authorized || !currentUser) return;
+      toast('Votre accès Infrastructure a été révoqué.');
+      try { await logoutInfra(); } catch {}
+      closeShell();
+    });
+  }
 }
 
 function closeShell() {
@@ -52,6 +61,7 @@ function closeShell() {
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
   els.manageUsers.classList.add('hidden'); els.currentUser.textContent = '';
   unsubscribe?.(); unsubscribe = null;
+  profileUnsubscribe?.(); profileUnsubscribe = null;
 }
 
 function fillCategories() {
