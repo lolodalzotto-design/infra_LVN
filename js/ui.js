@@ -95,7 +95,7 @@ function buildRoomLabelLayout(room) {
   };
 }
 
-function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
+function enablePlanNavigation(container, svg) {
   const vb = svg.viewBox.baseVal;
   const CONTENT = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
   const padX = CONTENT.w * 0.065;
@@ -111,14 +111,7 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
   const pointers = new Map();
   let pinchLastDistance = null;
   let pinchLastCenter = null;
-  let pinchLastAngle = null;
-  let rotation = 0;
   let moved = false;
-  const scene = svg.querySelector('.plan-scene');
-  const rotationCenter = {
-    x: CONTENT.x + CONTENT.w / 2,
-    y: CONTENT.y + CONTENT.h / 2
-  };
 
   const controls = document.createElement('div');
   controls.className = 'plan-nav-controls';
@@ -131,12 +124,6 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
 
   const applyView = () => {
     svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
-    if (scene) {
-      scene.setAttribute(
-        'transform',
-        allowRotation ? `rotate(${rotation} ${rotationCenter.x} ${rotationCenter.y})` : ''
-      );
-    }
   };
 
   const clampView = () => {
@@ -186,13 +173,15 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
   controls.querySelector('[data-plan-reset]').addEventListener('click', (event) => {
     event.stopPropagation();
     view = { ...BASE };
-    rotation = 0;
     applyView();
   });
 
   const fullscreenBtn = controls.querySelector('[data-plan-fullscreen]');
   const syncFullscreenButton = () => {
-    const active = document.fullscreenElement === container || document.webkitFullscreenElement === container || container.classList.contains('plan-fullscreen-fallback');
+    const active =
+      document.fullscreenElement === container ||
+      document.webkitFullscreenElement === container ||
+      container.classList.contains('plan-fullscreen-fallback');
     fullscreenBtn.textContent = active ? '✕' : '⛶';
     fullscreenBtn.setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Plein écran');
     fullscreenBtn.setAttribute('title', active ? 'Quitter le plein écran' : 'Plein écran');
@@ -238,28 +227,21 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
       const pts = [...pointers.values()];
       pinchLastDistance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       pinchLastCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
-      pinchLastAngle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180 / Math.PI;
     }
   });
 
   svg.addEventListener('pointermove', (event) => {
     const previous = pointers.get(event.pointerId);
     if (!previous) return;
-
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointers.size === 1) {
-      // À l'échelle initiale, un léger mouvement du doigt ne doit pas empêcher
-      // le tap sur une pièce. Le déplacement devient actif dès qu'on a zoomé.
       if (view.w >= BASE.w - 0.01 && view.h >= BASE.h - 0.01) return;
-
       const before = clientToSvg(previous.x, previous.y);
       const after = clientToSvg(event.clientX, event.clientY);
-      const dx = after.x - before.x;
-      const dy = after.y - before.y;
       if (Math.abs(event.clientX - previous.x) + Math.abs(event.clientY - previous.y) > 3) moved = true;
-      view.x -= dx;
-      view.y -= dy;
+      view.x -= after.x - before.x;
+      view.y -= after.y - before.y;
       clampView();
       applyView();
       return;
@@ -278,14 +260,6 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
         clampView();
       }
 
-      const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180 / Math.PI;
-      if (allowRotation && pinchLastAngle !== null) {
-        let delta = angle - pinchLastAngle;
-        if (delta > 180) delta -= 360;
-        if (delta < -180) delta += 360;
-        rotation += delta;
-      }
-
       if (pinchLastDistance && distance > 0) {
         zoomAt(pinchLastDistance / distance, center.x, center.y);
       } else {
@@ -294,7 +268,6 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
 
       pinchLastDistance = distance;
       pinchLastCenter = center;
-      pinchLastAngle = angle;
       moved = true;
     }
   });
@@ -303,11 +276,9 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
     pointers.delete(event.pointerId);
     try { svg.releasePointerCapture?.(event.pointerId); } catch {}
     if (moved) svg.__suppressRoomClickUntil = Date.now() + 250;
-
     if (pointers.size < 2) {
       pinchLastDistance = null;
       pinchLastCenter = null;
-      pinchLastAngle = null;
     }
   };
 
@@ -315,7 +286,7 @@ function enablePlanNavigation(container, svg, { allowRotation = false } = {}) {
   svg.addEventListener('pointercancel', finishPointer);
 
   container.classList.add('plan-navigable');
-  container.classList.toggle('plan-rotation-enabled', allowRotation);
+  container.classList.remove('plan-rotation-enabled');
   container.appendChild(controls);
   applyView();
 }
@@ -442,8 +413,7 @@ export function renderPlan(container, buildingId, levelId, {
   });
 
   container.replaceChildren(svg);
-  const allowRotation = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
-  enablePlanNavigation(container, svg, { allowRotation });
+  enablePlanNavigation(container, svg);
 }
 
 export function statusBadge(status) {
