@@ -169,7 +169,10 @@ function renderPriorityPanels(rows) {
 
 function currentFilterLabel() {
   const parts = [];
-  const statusText = els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
+  const quickLabels = { urgent:'Urgent', a_traiter:'À traiter', en_cours:'En cours', resolu:'Résolues' };
+  const statusText = quickFilter !== 'all'
+    ? quickLabels[quickFilter]
+    : els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
   const categoryText = els.filterCategory.options[els.filterCategory.selectedIndex]?.textContent;
   const buildingText = els.filterBuilding.options[els.filterBuilding.selectedIndex]?.textContent;
   if (buildingText) parts.push(buildingText);
