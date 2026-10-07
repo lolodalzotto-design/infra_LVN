@@ -803,3 +803,51 @@ body.plan-fullscreen-body { overflow:hidden; }
   color:var(--muted);
   font-size:.69rem;
 }
+
+
+/* Infra member onboarding */
+.onboarding-summary {
+  display:grid;
+  gap:8px;
+  margin:12px 0 16px;
+}
+.onboarding-row {
+  display:grid;
+  gap:4px;
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fafc;
+}
+.onboarding-row span {
+  font-size:.7rem;
+  font-weight:800;
+  color:var(--muted);
+}
+.onboarding-row strong {
+  font-size:.82rem;
+  color:var(--navy);
+  overflow-wrap:anywhere;
+}
+.install-guide {
+  display:grid;
+  gap:10px;
+  margin:12px 0 4px;
+}
+.install-guide-card {
+  display:grid;
+  gap:6px;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+}
+.install-guide-card strong {
+  color:var(--navy);
+  font-size:.86rem;
+}
+.install-guide-card span {
+  color:#536579;
+  font-size:.79rem;
+  line-height:1.4;
+}
