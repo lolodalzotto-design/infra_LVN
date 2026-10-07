@@ -25,10 +25,61 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
   return anomalies.some((a) => a.roomId === roomId && a.status !== 'resolu');
 }
 
+function buildRoomLabelLayout(room) {
+  const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return { lines: [], fontSize: 0.8, lineGap: 1, showCode: false, codeSize: 0.65 };
+
+  const maxLines = room.h < 3.4 ? 1 : room.h < 6 ? 2 : 3;
+  const availableW = Math.max(1.2, room.w * 0.88);
+  const availableH = Math.max(1.2, room.h * 0.76);
+  let best = null;
+
+  const splitInto = (count) => {
+    if (count <= 1 || words.length === 1) return [words.join(' ')];
+    const lines = Array.from({ length: count }, () => []);
+    const lengths = Array(count).fill(0);
+    for (const word of words) {
+      let target = 0;
+      for (let i = 1; i < count; i += 1) {
+        if (lengths[i] < lengths[target]) target = i;
+      }
+      lines[target].push(word);
+      lengths[target] += word.length + 1;
+    }
+    return lines.filter(line => line.length).map(line => line.join(' '));
+  };
+
+  for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
+    const lines = splitInto(count);
+    const longest = Math.max(...lines.map(line => line.length), 1);
+    const sizeByWidth = availableW / (longest * 0.58);
+    const sizeByHeight = availableH / (lines.length * 1.18);
+    const fontSize = Math.max(0.48, Math.min(1.9, sizeByWidth, sizeByHeight));
+    if (!best || fontSize > best.fontSize) best = { lines, fontSize };
+  }
+
+  const lineGap = Math.max(0.62, best.fontSize * 1.18);
+  const showCode = !!room.code && room.h >= Math.max(4.2, (best.lines.length + 1) * lineGap + 0.5);
+  return {
+    ...best,
+    lineGap,
+    showCode,
+    codeSize: Math.max(0.45, Math.min(1.15, best.fontSize * 0.72))
+  };
+}
+
 function enablePlanNavigation(container, svg) {
   const vb = svg.viewBox.baseVal;
-  const BASE = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
-  const MAX_ZOOM = 6;
+  const CONTENT = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
+  const padX = CONTENT.w * 0.065;
+  const padY = CONTENT.h * 0.09;
+  const BASE = {
+    x: CONTENT.x - padX,
+    y: CONTENT.y - padY,
+    w: CONTENT.w + padX * 2,
+    h: CONTENT.h + padY * 2
+  };
+  const MAX_ZOOM = 7;
   let view = { ...BASE };
   const pointers = new Map();
   let pinchLastDistance = null;
@@ -41,6 +92,7 @@ function enablePlanNavigation(container, svg) {
     <button type="button" data-plan-zoom-in aria-label="Zoomer">+</button>
     <button type="button" data-plan-zoom-out aria-label="Dézoomer">−</button>
     <button type="button" data-plan-reset aria-label="Recentrer">↺</button>
+    <button type="button" data-plan-fullscreen aria-label="Plein écran" title="Plein écran">⛶</button>
   `;
 
   const applyView = () => {
@@ -96,6 +148,40 @@ function enablePlanNavigation(container, svg) {
     view = { ...BASE };
     applyView();
   });
+
+  const fullscreenBtn = controls.querySelector('[data-plan-fullscreen]');
+  const syncFullscreenButton = () => {
+    const active = document.fullscreenElement === container || document.webkitFullscreenElement === container || container.classList.contains('plan-fullscreen-fallback');
+    fullscreenBtn.textContent = active ? '✕' : '⛶';
+    fullscreenBtn.setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Plein écran');
+    fullscreenBtn.setAttribute('title', active ? 'Quitter le plein écran' : 'Plein écran');
+  };
+
+  fullscreenBtn.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const nativeActive = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (nativeActive) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } else if (container.requestFullscreen) {
+        await container.requestFullscreen();
+      } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+      } else {
+        container.classList.toggle('plan-fullscreen-fallback');
+        document.body.classList.toggle('plan-fullscreen-body', container.classList.contains('plan-fullscreen-fallback'));
+        syncFullscreenButton();
+      }
+    } catch {
+      container.classList.toggle('plan-fullscreen-fallback');
+      document.body.classList.toggle('plan-fullscreen-body', container.classList.contains('plan-fullscreen-fallback'));
+      syncFullscreenButton();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', syncFullscreenButton);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
   svg.addEventListener('wheel', (event) => {
     event.preventDefault();
@@ -237,24 +323,34 @@ export function renderPlan(container, buildingId, levelId, {
     }
     shape.classList.add('plan-shape');
 
+    const layout = buildRoomLabelLayout(room);
     const label = document.createElementNS(svgNs, 'text');
-    label.setAttribute('x', room.x + room.w / 2);
-    label.setAttribute('y', room.y + room.h / 2 - 1);
+    const centerX = room.x + room.w / 2;
+    const centerY = room.y + room.h / 2;
+    label.setAttribute('x', centerX);
     label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('dominant-baseline', 'middle');
     label.classList.add('room-label');
-    const labelSize = Math.max(0.95, Math.min(2.1, room.w / Math.max(5, room.name.length * 0.42)));
-    label.setAttribute('font-size', String(labelSize));
-    label.textContent = room.name;
+    label.setAttribute('font-size', String(layout.fontSize));
+
+    const labelBlockHeight = Math.max(0, (layout.lines.length - 1) * layout.lineGap);
+    const codeOffset = layout.showCode ? layout.lineGap * 0.42 : 0;
+    const firstY = centerY - labelBlockHeight / 2 - codeOffset;
+
+    layout.lines.forEach((line, index) => {
+      const tspan = document.createElementNS(svgNs, 'tspan');
+      tspan.setAttribute('x', centerX);
+      tspan.setAttribute('y', String(firstY + index * layout.lineGap));
+      tspan.textContent = line;
+      label.appendChild(tspan);
+    });
 
     const code = document.createElementNS(svgNs, 'text');
-    code.setAttribute('x', room.x + room.w / 2);
-    code.setAttribute('y', room.y + room.h / 2 + 7);
+    code.setAttribute('x', centerX);
+    code.setAttribute('y', String(centerY + labelBlockHeight / 2 + layout.lineGap * 0.82));
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
-    const codeSize = Math.max(0.9, Math.min(1.8, room.w / 4.2));
-    code.setAttribute('font-size', String(codeSize));
-    code.textContent = room.code || '';
+    code.setAttribute('font-size', String(layout.codeSize));
+    code.textContent = layout.showCode ? (room.code || '') : '';
 
     const activate = () => {
       if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
