@@ -162,7 +162,7 @@ export async function createAnomaly(payload, photoFile = null) {
     createdAt: fsMod.serverTimestamp(),
     updatedAt: fsMod.serverTimestamp()
   });
-  await setRoomStatus(payload.roomId, true);
+  try { await setRoomStatus(payload.roomId, true); } catch {}
   return { id: docRef.id, ...record, photoUrl };
 }
 
@@ -195,6 +195,19 @@ async function setRoomStatus(roomId, active) {
     { active: !!active, updatedAt: fsMod.serverTimestamp() },
     { merge: true }
   );
+}
+
+export async function syncRoomStatuses(rows = []) {
+  if (APP_MODE === 'demo') return;
+  const state = new Map();
+  for (const item of rows) {
+    if (!item?.roomId) continue;
+    const active = item.status !== 'resolu';
+    state.set(item.roomId, (state.get(item.roomId) || false) || active);
+  }
+  for (const [roomId, active] of state.entries()) {
+    try { await setRoomStatus(roomId, active); } catch {}
+  }
 }
 
 export function subscribeAnomalies(callback) {
@@ -253,7 +266,7 @@ export async function updateAnomaly(id, patch, { actor = 'infra_lvn', actionLabe
   if (patch.status === 'resolu') finalPatch.resolvedAt = fsMod.serverTimestamp();
   if (patch.status && patch.status !== 'resolu') finalPatch.resolvedAt = null;
   await fsMod.updateDoc(fsMod.doc(db, 'anomalies', id), finalPatch);
-  if (roomId && typeof roomActive === 'boolean') await setRoomStatus(roomId, roomActive);
+  if (roomId && typeof roomActive === 'boolean') { try { await setRoomStatus(roomId, roomActive); } catch {} }
 }
 
 export async function deleteAnomaly(id, actor = 'infra_lvn', { roomId = null, roomActive = null } = {}) {
@@ -264,7 +277,7 @@ export async function deleteAnomaly(id, actor = 'infra_lvn', { roomId = null, ro
   const { db, fsMod } = await getFirebase();
   // Suppression réservée aux erreurs manifestes. En production, préférer un archivage logique.
   await fsMod.deleteDoc(fsMod.doc(db, 'anomalies', id));
-  if (roomId && typeof roomActive === 'boolean') await setRoomStatus(roomId, roomActive);
+  if (roomId && typeof roomActive === 'boolean') { try { await setRoomStatus(roomId, roomActive); } catch {} }
 }
 
 export function resetDemoData() {
