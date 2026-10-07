@@ -25,7 +25,7 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
   return anomalies.some((a) => a.roomId === roomId && a.status !== 'resolu');
 }
 
-function buildRoomLabelLayout(room, { readableOverlay = false } = {}) {
+function buildRoomLabelLayout(room) {
   const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
     return { lines: [], fontSize: 0.4, lineGap: 0.48, showCode: false, codeSize: 0.28 };
@@ -64,39 +64,34 @@ function buildRoomLabelLayout(room, { readableOverlay = false } = {}) {
     room.h < 6.5 ? 3 :
     room.h < 10 ? 4 : 5;
 
-  const availableW = Math.max(0.55, room.w * (readableOverlay ? 0.90 : 0.80));
-  const availableH = Math.max(0.55, room.h * (readableOverlay ? 0.82 : 0.72));
-  const charWidthFactor = readableOverlay ? 0.58 : 0.66;
-  const maxFontSize = readableOverlay ? 1.06 : 0.72;
-  const minFontSize = readableOverlay ? 0.28 : 0.20;
+  const availableW = Math.max(0.55, room.w * 0.80);
+  const availableH = Math.max(0.55, room.h * 0.72);
   let best = null;
 
   for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
     const lines = makeLines(count);
     const longest = Math.max(...lines.map(line => line.length), 1);
-    const fontByWidth = availableW / (longest * charWidthFactor);
-    const fontByHeight = availableH / (lines.length * (readableOverlay ? 1.12 : 1.24));
-    const fontSize = Math.max(minFontSize, Math.min(maxFontSize, fontByWidth, fontByHeight));
+    const fontByWidth = availableW / (longest * 0.66);
+    const fontByHeight = availableH / (lines.length * 1.24);
+    const fontSize = Math.max(0.20, Math.min(0.72, fontByWidth, fontByHeight));
 
     if (!best || fontSize > best.fontSize) {
       best = { lines, fontSize };
     }
   }
 
-  const lineGap = Math.max(readableOverlay ? 0.34 : 0.28, best.fontSize * (readableOverlay ? 1.08 : 1.16));
+  const lineGap = Math.max(0.28, best.fontSize * 1.16);
   const nameHeight = best.lines.length * lineGap;
   const showCode = !!room.code
-    && (readableOverlay
-      ? room.w >= 3.4 && room.h >= 3.1 && nameHeight + lineGap * 0.72 <= room.h * 0.90
-      : room.w >= 8 && room.h >= 8 && nameHeight + 0.7 <= room.h * 0.66);
+    && room.w >= 8
+    && room.h >= 8
+    && nameHeight + 0.7 <= room.h * 0.66;
 
   return {
     ...best,
     lineGap,
     showCode,
-    codeSize: readableOverlay
-      ? Math.max(0.30, Math.min(0.72, best.fontSize * 0.82))
-      : Math.max(0.20, Math.min(0.46, best.fontSize * 0.58))
+    codeSize: Math.max(0.20, Math.min(0.46, best.fontSize * 0.58))
   };
 }
 
@@ -499,13 +494,6 @@ export function renderPlan(container, buildingId, levelId, {
   svg.classList.add('plan-svg');
   if (zone.planImage) svg.classList.add('plan-has-image');
 
-  // A / RDC / Caserne est la référence validée : on conserve son rendu natif.
-  // Les autres SVG issus d'une conversion PDF ont leurs lettres transformées
-  // en tracés. On superpose donc des libellés SVG natifs, plus nets et lisibles.
-  const isReferencePlan = String(zone.planImage || '').includes('A-RDC-caserne.svg');
-  const readableOverlay = !!zone.planImage && !isReferencePlan;
-  if (readableOverlay) svg.classList.add('plan-readable-overlay');
-
   const scene = document.createElementNS(svgNs, 'g');
   scene.classList.add('plan-scene');
   svg.appendChild(scene);
@@ -559,7 +547,7 @@ export function renderPlan(container, buildingId, levelId, {
     }
     shape.classList.add('plan-shape');
 
-    const layout = buildRoomLabelLayout(room, { readableOverlay });
+    const layout = buildRoomLabelLayout(room);
     const label = document.createElementNS(svgNs, 'text');
     const centerX = room.x + room.w / 2;
     const centerY = (room.y + room.h / 2) * scaleY;
@@ -587,29 +575,6 @@ export function renderPlan(container, buildingId, levelId, {
     code.classList.add('room-code');
     code.setAttribute('font-size', String(layout.codeSize));
     code.textContent = layout.showCode ? (room.code || '') : '';
-
-    let labelPlate = null;
-    if (readableOverlay && layout.lines.length) {
-      const longestChars = Math.max(...layout.lines.map(line => line.length), 1);
-      const textWidth = Math.min(
-        Math.max(1.5, room.w * 0.92),
-        Math.max(1.4, longestChars * layout.fontSize * 0.58 + 0.9)
-      );
-      const nameHeight = Math.max(layout.fontSize, layout.lines.length * layout.lineGap);
-      const codeHeight = layout.showCode ? layout.lineGap * 0.95 : 0;
-      const plateHeight = Math.min(
-        room.h * scaleY * 0.88,
-        Math.max(1.15, nameHeight + codeHeight + 0.65)
-      );
-
-      labelPlate = document.createElementNS(svgNs, 'rect');
-      labelPlate.setAttribute('x', String(centerX - textWidth / 2));
-      labelPlate.setAttribute('y', String(centerY - plateHeight / 2));
-      labelPlate.setAttribute('width', String(textWidth));
-      labelPlate.setAttribute('height', String(plateHeight));
-      labelPlate.setAttribute('rx', String(Math.min(0.45, plateHeight * 0.18)));
-      labelPlate.classList.add('room-label-plate');
-    }
 
     const activate = () => {
       if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
@@ -644,14 +609,8 @@ export function renderPlan(container, buildingId, levelId, {
     });
 
     if (zone.planImage) {
-      if (readableOverlay) {
-        group.append(shape);
-        if (labelPlate) group.append(labelPlate);
-        group.append(label, code);
-      } else {
-        // Plan de référence A / RDC / Caserne : conserver exactement ses libellés natifs.
-        group.append(shape);
-      }
+      // Le plan d'origine porte déjà les vrais noms et codes : ne rien réécrire par-dessus.
+      group.append(shape);
     } else {
       group.append(shape, label, code);
     }
@@ -659,19 +618,10 @@ export function renderPlan(container, buildingId, levelId, {
   });
 
   container.replaceChildren(svg);
-
-  // Les plans très allongés sont illisibles lorsqu'on force tout le bâtiment
-  // dans la largeur d'un téléphone. On démarre légèrement plus près, tout en
-  // gardant le bouton de recentrage pour retrouver instantanément la vue globale.
-  const planAspect = vb.width / Math.max(vb.height, 1);
-  const initialZoom = readableOverlay
-    ? (planAspect >= 4.2 ? 1.55 : planAspect >= 3 ? 1.28 : 1)
-    : 1;
-
   enablePlanNavigation(container, svg, {
     allowRotation: gestureEnabled,
     nativeTouch: gestureEnabled,
-    initialZoom,
+    initialZoom: 1,
     exactFit: gestureEnabled
   });
 }
