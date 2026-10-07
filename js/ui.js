@@ -315,13 +315,27 @@ export function renderPlan(container, buildingId, levelId, {
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', `${PLAN_CONFIG[buildingId].label} — ${level.label} — ${zone.label}`);
   svg.classList.add('plan-svg');
+  if (zone.planImage) svg.classList.add('plan-has-image');
+
+  if (zone.planImage) {
+    const image = document.createElementNS(svgNs, 'image');
+    image.setAttribute('href', zone.planImage);
+    image.setAttribute('x', '0');
+    image.setAttribute('y', '0');
+    image.setAttribute('width', String(vb.width));
+    image.setAttribute('height', String(vb.height));
+    image.setAttribute('preserveAspectRatio', 'none');
+    image.classList.add('plan-background');
+    svg.appendChild(image);
+  }
 
   const outer = document.createElementNS(svgNs, 'rect');
   outer.setAttribute('x', '0.5'); outer.setAttribute('y', '0.5'); outer.setAttribute('width', String(vb.width - 1)); outer.setAttribute('height', String(vb.height - 1));
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
-  svg.appendChild(outer);
+  if (!zone.planImage) svg.appendChild(outer);
 
   zone.rooms.forEach((room) => {
+    const scaleY = zone.coordinateScaleY || 1;
     const group = document.createElementNS(svgNs, 'g');
     group.classList.add('plan-room');
     const activeFromStatus = roomStatus && Object.prototype.hasOwnProperty.call(roomStatus, room.id)
@@ -339,13 +353,13 @@ export function renderPlan(container, buildingId, levelId, {
     let shape;
     if (Array.isArray(room.points) && room.points.length >= 3) {
       shape = document.createElementNS(svgNs, 'polygon');
-      shape.setAttribute('points', room.points.map(p => `${p[0]},${p[1]}`).join(' '));
+      shape.setAttribute('points', room.points.map(p => `${p[0]},${p[1] * scaleY}`).join(' '));
     } else {
       shape = document.createElementNS(svgNs, 'rect');
       shape.setAttribute('x', room.x);
-      shape.setAttribute('y', room.y);
+      shape.setAttribute('y', room.y * scaleY);
       shape.setAttribute('width', room.w);
-      shape.setAttribute('height', room.h);
+      shape.setAttribute('height', room.h * scaleY);
       shape.setAttribute('rx', '0.6');
     }
     shape.classList.add('plan-shape');
@@ -353,7 +367,7 @@ export function renderPlan(container, buildingId, levelId, {
     const layout = buildRoomLabelLayout(room);
     const label = document.createElementNS(svgNs, 'text');
     const centerX = room.x + room.w / 2;
-    const centerY = room.y + room.h / 2;
+    const centerY = (room.y + room.h / 2) * scaleY;
     label.setAttribute('x', centerX);
     label.setAttribute('text-anchor', 'middle');
     label.classList.add('room-label');
