@@ -12,20 +12,24 @@
 <main>
 <div class="step-title"><span class="step-number">1</span>Dans quel bâtiment êtes-vous ?</div>
     <div class="segmented" aria-label="Choix du bâtiment">
-      <button type="button" class="segment-btn active" data-building="A">Bâtiment A</button>
+      <button type="button" class="segment-btn" data-building="A">Bâtiment A</button>
       <button type="button" class="segment-btn" data-building="B">Bâtiment B</button>
     </div>
 
-    <div class="step-title"><span class="step-number">2</span>À quel niveau êtes-vous ?</div>
-    <div id="level-buttons" class="segmented level-segmented" aria-label="Choix du niveau"></div>
+    <section id="step-2" class="progressive-step hidden">
+      <div class="step-title"><span class="step-number">2</span>À quel niveau êtes-vous ?</div>
+      <div id="level-buttons" class="segmented level-segmented" aria-label="Choix du niveau"></div>
+    </section>
 
-    <div id="zone-wrap">
+    <section id="step-3" class="progressive-step hidden">
       <div class="step-title"><span class="step-number">3</span>Dans quelle partie êtes-vous ?</div>
       <div id="zone-buttons" class="segmented" aria-label="Choix de la zone"></div>
-    </div>
+    </section>
 
-    <div class="step-title"><span class="step-number">4</span>Sélectionnez la pièce</div>
-    <section id="plans" class="plans-grid single-plan"></section>
+    <section id="step-4" class="progressive-step hidden">
+      <div class="step-title"><span class="step-number">4</span>Sélectionnez la pièce</div>
+      <section id="plans" class="plans-grid single-plan"></section>
+    </section>
 
     <section id="report-card" class="form-card hidden">
       <div class="step-title" style="margin-top:0"><span class="step-number">5</span>Décrivez le problème</div>
