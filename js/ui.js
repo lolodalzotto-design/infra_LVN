@@ -136,6 +136,7 @@ function enablePlanNavigation(container, svg, {
   let touchLastDistance = null;
   let touchLastCenter = null;
   let touchLastAngle = null;
+  let touchGestureActive = false;
 
   const controls = document.createElement('div');
   controls.className = 'plan-nav-controls';
@@ -338,6 +339,9 @@ function enablePlanNavigation(container, svg, {
     svg.addEventListener('touchstart', (event) => {
       if (event.touches.length >= 2) {
         event.preventDefault();
+        touchGestureActive = true;
+        moved = true;
+        svg.__suppressRoomClickUntil = Date.now() + 500;
         const a = event.touches[0];
         const b = event.touches[1];
         touchLastDistance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
@@ -346,7 +350,11 @@ function enablePlanNavigation(container, svg, {
           y: (a.clientY + b.clientY) / 2
         };
         touchLastAngle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
-        moved = true;
+      } else if (event.touches.length === 1) {
+        // Un nouveau tap simple doit rester sélectionnable, même après un pinch précédent.
+        touchGestureActive = false;
+        moved = false;
+        resetTouchGesture();
       }
     }, { passive: false });
 
@@ -388,11 +396,21 @@ function enablePlanNavigation(container, svg, {
     }, { passive: false });
 
     svg.addEventListener('touchend', (event) => {
+      if (touchGestureActive) {
+        svg.__suppressRoomClickUntil = Date.now() + 350;
+      }
       if (event.touches.length < 2) resetTouchGesture();
-      if (moved) svg.__suppressRoomClickUntil = Date.now() + 350;
+      if (event.touches.length === 0) {
+        touchGestureActive = false;
+        moved = false;
+      }
     }, { passive: false });
 
-    svg.addEventListener('touchcancel', resetTouchGesture, { passive: false });
+    svg.addEventListener('touchcancel', () => {
+      resetTouchGesture();
+      touchGestureActive = false;
+      moved = false;
+    }, { passive: false });
   }
 
   container.classList.add('plan-navigable');
@@ -444,6 +462,8 @@ export function renderPlan(container, buildingId, levelId, {
   outer.setAttribute('x', '0.5'); outer.setAttribute('y', '0.5'); outer.setAttribute('width', String(vb.width - 1)); outer.setAttribute('height', String(vb.height - 1));
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
   if (!zone.planImage) scene.appendChild(outer);
+
+  const gestureTest = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
 
   zone.rooms.forEach((room) => {
     const scaleY = zone.coordinateScaleY || 1;
@@ -508,7 +528,30 @@ export function renderPlan(container, buildingId, levelId, {
       if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
       onRoomClick(room);
     };
-    group.addEventListener('click', activate);
+
+    let touchTapStart = null;
+    if (gestureTest) {
+      group.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'touch') return;
+        touchTapStart = { x: event.clientX, y: event.clientY };
+      });
+      group.addEventListener('pointerup', (event) => {
+        if (event.pointerType !== 'touch' || !touchTapStart) return;
+        const dx = event.clientX - touchTapStart.x;
+        const dy = event.clientY - touchTapStart.y;
+        touchTapStart = null;
+        if (Math.hypot(dx, dy) > 10) return;
+        if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
+        svg.__suppressSyntheticClickUntil = Date.now() + 500;
+        onRoomClick(room);
+      });
+      group.addEventListener('pointercancel', () => { touchTapStart = null; });
+    }
+
+    group.addEventListener('click', () => {
+      if (svg.__suppressSyntheticClickUntil && Date.now() < svg.__suppressSyntheticClickUntil) return;
+      activate();
+    });
     group.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(); }
     });
@@ -523,7 +566,6 @@ export function renderPlan(container, buildingId, levelId, {
   });
 
   container.replaceChildren(svg);
-  const gestureTest = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
   enablePlanNavigation(container, svg, {
     allowRotation: gestureTest,
     nativeTouch: gestureTest,
