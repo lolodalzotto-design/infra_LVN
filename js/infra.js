@@ -165,14 +165,16 @@ function openAnomalyModal(id) {
   $('#update-form').addEventListener('submit', async e => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const status = fd.get('status');
     const label = status !== a.status ? `Statut passé à ${status === 'a_traiter' ? 'À traiter' : status === 'en_cours' ? 'En cours' : 'Résolu'}` : 'Anomalie mise à jour';
+    const roomActive = status !== 'resolu' || anomalies.some(x => x.id !== id && x.roomId === a.roomId && x.status !== 'resolu');
     try {
-      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:INFRA_OPERATOR, actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null });
+      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:INFRA_OPERATOR, actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null, roomId:a.roomId, roomActive });
       closeModal(); toast('Anomalie mise à jour.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
   $('#delete-anomaly').addEventListener('click', async () => {
     if (!confirm('Supprimer ce signalement créé par erreur ?')) return;
-    try { await deleteAnomaly(id, INFRA_OPERATOR); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
+    const roomActive = anomalies.some(x => x.id !== id && x.roomId === a.roomId && x.status !== 'resolu');
+    try { await deleteAnomaly(id, INFRA_OPERATOR, { roomId:a.roomId, roomActive }); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
   });
 }
 
