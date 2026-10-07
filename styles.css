@@ -316,3 +316,26 @@ body.plan-fullscreen-body { overflow:hidden; }
   background:#eef1f4 !important;
 }
 
+
+
+/* Comptes Infra */
+.dashboard-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.current-user{margin-top:4px;font-size:.92rem;font-weight:700;color:#536579}
+.text-button{display:inline-flex;align-items:center;justify-content:center;margin-top:10px;padding:6px 2px;border:0;background:transparent;color:#245c91;font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.account-list{display:grid;gap:10px;margin:14px 0 20px}
+.account-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid #dbe3eb;border-radius:12px;background:#fff}
+.account-main{min-width:0}
+.account-name{font-weight:800;color:#0d223a}
+.account-email{font-size:.86rem;color:#637487;overflow-wrap:anywhere}
+.account-meta{display:flex;gap:7px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.account-state{font-size:.76rem;font-weight:800;padding:3px 8px;border-radius:999px;background:#e9f5ee;color:#17653a}
+.account-state.revoked{background:#fbeaea;color:#9b2731}
+.account-role{font-size:.76rem;font-weight:800;padding:3px 8px;border-radius:999px;background:#eaf1f8;color:#294f75}
+.account-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.account-create{padding-top:14px;border-top:1px solid #e2e8ef}
+@media (max-width:700px){
+  .dashboard-heading{align-items:flex-start}
+  .dashboard-actions{width:100%;justify-content:flex-start}
+  .account-card{align-items:flex-start;flex-direction:column}
+  .account-actions{width:100%;justify-content:flex-start}
+}
