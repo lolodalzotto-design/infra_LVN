@@ -1,4 +1,4 @@
-import { APP_MODE, firebaseConfig } from './firebase-config.js?v=20261007-0845';
+import { APP_MODE, firebaseConfig } from './firebase-config.js?v=20261007-1045';
 
 const DEMO_KEY = 'infra_LVN_demo_anomalies_v1';
 const DEMO_SESSION_KEY = 'infra_LVN_demo_infra_session';
