@@ -526,7 +526,7 @@ export function renderPlan(container, buildingId, levelId, {
   enablePlanNavigation(container, svg, {
     allowRotation: gestureTest,
     nativeTouch: gestureTest,
-    initialZoom: gestureTest ? 1.25 : 1
+    initialZoom: gestureTest ? 1.35 : 1
   });
 }
 
