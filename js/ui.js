@@ -36,17 +36,27 @@ function buildRoomLabelLayout(room) {
 
   const splitInto = (count) => {
     if (count <= 1 || words.length === 1) return [words.join(' ')];
-    const lines = Array.from({ length: count }, () => []);
-    const lengths = Array(count).fill(0);
-    for (const word of words) {
-      let target = 0;
-      for (let i = 1; i < count; i += 1) {
-        if (lengths[i] < lengths[target]) target = i;
+    const totalChars = words.reduce((sum, word) => sum + word.length, 0) + Math.max(0, words.length - 1);
+    const target = Math.max(1, Math.ceil(totalChars / count));
+    const lines = [];
+    let current = [];
+    let currentLength = 0;
+
+    words.forEach((word) => {
+      const nextLength = currentLength + (current.length ? 1 : 0) + word.length;
+      const canBreak = lines.length < count - 1 && current.length > 0;
+      if (canBreak && nextLength > target) {
+        lines.push(current.join(' '));
+        current = [word];
+        currentLength = word.length;
+      } else {
+        current.push(word);
+        currentLength = nextLength;
       }
-      lines[target].push(word);
-      lengths[target] += word.length + 1;
-    }
-    return lines.filter(line => line.length).map(line => line.join(' '));
+    });
+
+    if (current.length) lines.push(current.join(' '));
+    return lines;
   };
 
   for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
