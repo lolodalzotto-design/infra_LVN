@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-planviz-3';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-planviz-3';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-menu-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-menu-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-planviz-3';
+} from './store.js?v=20261007-menu-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -26,6 +26,7 @@ const els = {
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
   forgotPassword: $('#forgot-password-btn'), changePassword: $('#change-password-btn'),
   manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
+  topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
@@ -40,12 +41,23 @@ function toast(message) {
   setTimeout(() => node.remove(), 3200);
 }
 
+function setTopMenu(open) {
+  els.topMenu.classList.toggle('hidden', !open);
+  els.topMenuButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+  els.topMenuButton.classList.toggle('active', open);
+}
+
+function closeTopMenu() {
+  setTopMenu(false);
+}
+
 async function openShell(profile = null) {
   currentUser = profile || await getCurrentInfraUser();
   if (!currentUser?.authorized) throw new Error('Compte non autorisé.');
   els.loginWrap.classList.add('hidden');
   els.shell.classList.add('active');
   els.logout.classList.remove('hidden');
+  closeTopMenu();
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
   document.querySelectorAll('.admin-overview').forEach(node => node.classList.toggle('hidden', !currentUser.isAdmin));
@@ -63,7 +75,7 @@ async function openShell(profile = null) {
 function closeShell() {
   currentUser = null;
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
-  els.manageUsers.classList.add('hidden'); els.currentUser.textContent = '';
+  els.manageUsers.classList.add('hidden'); els.currentUser.textContent = ''; closeTopMenu();
   unsubscribe?.(); unsubscribe = null;
   profileUnsubscribe?.(); profileUnsubscribe = null;
 }
@@ -546,9 +558,18 @@ async function init() {
   }
 
   els.forgotPassword.addEventListener('click', openForgotPasswordModal);
-  els.changePassword.addEventListener('click', openChangePasswordModal);
-  els.manageUsers.addEventListener('click', openUsersModal);
-  els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
+  els.changePassword.addEventListener('click', () => { closeTopMenu(); openChangePasswordModal(); });
+  els.manageUsers.addEventListener('click', () => { closeTopMenu(); openUsersModal(); });
+  els.logout.addEventListener('click', async () => { closeTopMenu(); await logoutInfra(); closeShell(); });
+  els.topMenuButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setTopMenu(els.topMenu.classList.contains('hidden'));
+  });
+  els.topMenu.addEventListener('click', (event) => event.stopPropagation());
+  document.addEventListener('click', closeTopMenu);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeTopMenu();
+  });
   [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
   els.filterSearch.addEventListener('input', renderAll);
   els.planBuilding.addEventListener('change', refreshPlanLevelOptions);
