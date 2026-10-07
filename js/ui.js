@@ -28,27 +28,29 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
 function buildRoomLabelLayout(room) {
   const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
-    return { lines: [], fontSize: 0.42, lineGap: 0.5, showCode: false, codeSize: 0.3 };
+    return { lines: [], fontSize: 0.4, lineGap: 0.48, showCode: false, codeSize: 0.28 };
   }
 
-  const splitInto = (count) => {
+  const makeLines = (count) => {
     if (count <= 1 || words.length === 1) return [words.join(' ')];
+
     const totalChars = words.reduce((sum, word) => sum + word.length, 0) + Math.max(0, words.length - 1);
-    const target = Math.max(1, Math.ceil(totalChars / count));
+    const target = totalChars / count;
     const lines = [];
     let current = [];
-    let currentLength = 0;
+    let currentChars = 0;
 
     for (const word of words) {
-      const nextLength = currentLength + (current.length ? 1 : 0) + word.length;
+      const projected = currentChars + (current.length ? 1 : 0) + word.length;
       const canBreak = lines.length < count - 1 && current.length > 0;
-      if (canBreak && nextLength > target) {
+
+      if (canBreak && projected > target) {
         lines.push(current.join(' '));
         current = [word];
-        currentLength = word.length;
+        currentChars = word.length;
       } else {
         current.push(word);
-        currentLength = nextLength;
+        currentChars = projected;
       }
     }
 
@@ -56,32 +58,40 @@ function buildRoomLabelLayout(room) {
     return lines;
   };
 
-  const maxLines = room.h < 2.6 ? 1 : room.h < 5 ? 2 : 3;
-  const availableW = Math.max(0.6, room.w * 0.72);
-  const availableH = Math.max(0.6, room.h * 0.58);
+  const maxLines =
+    room.h < 2.5 ? 1 :
+    room.h < 4.2 ? 2 :
+    room.h < 6.5 ? 3 :
+    room.h < 10 ? 4 : 5;
+
+  const availableW = Math.max(0.55, room.w * 0.80);
+  const availableH = Math.max(0.55, room.h * 0.72);
   let best = null;
 
   for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
-    const lines = splitInto(count);
+    const lines = makeLines(count);
     const longest = Math.max(...lines.map(line => line.length), 1);
-    const sizeByWidth = availableW / (longest * 0.68);
-    const sizeByHeight = availableH / (lines.length * 1.35);
-    const fontSize = Math.max(0.22, Math.min(0.78, sizeByWidth, sizeByHeight));
-    if (!best || fontSize > best.fontSize) best = { lines, fontSize };
+    const fontByWidth = availableW / (longest * 0.66);
+    const fontByHeight = availableH / (lines.length * 1.24);
+    const fontSize = Math.max(0.20, Math.min(0.72, fontByWidth, fontByHeight));
+
+    if (!best || fontSize > best.fontSize) {
+      best = { lines, fontSize };
+    }
   }
 
-  const lineGap = Math.max(0.30, best.fontSize * 1.16);
-  const projectedTextHeight = best.lines.length * lineGap;
+  const lineGap = Math.max(0.28, best.fontSize * 1.16);
+  const nameHeight = best.lines.length * lineGap;
   const showCode = !!room.code
-    && room.w >= 5
-    && room.h >= 6.5
-    && projectedTextHeight + Math.max(0.45, best.fontSize * 0.8) <= room.h * 0.55;
+    && room.w >= 8
+    && room.h >= 8
+    && nameHeight + 0.7 <= room.h * 0.66;
 
   return {
     ...best,
     lineGap,
     showCode,
-    codeSize: Math.max(0.22, Math.min(0.56, best.fontSize * 0.62))
+    codeSize: Math.max(0.20, Math.min(0.46, best.fontSize * 0.58))
   };
 }
 
