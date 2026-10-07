@@ -26,7 +26,8 @@ export function roomHasActiveAnomaly(roomId, anomalies = []) {
 }
 
 function enablePlanNavigation(container, svg) {
-  const BASE = { x: 0, y: 0, w: 100, h: 100 };
+  const vb = svg.viewBox.baseVal;
+  const BASE = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
   const MAX_ZOOM = 6;
   let view = { ...BASE };
   const pointers = new Map();
@@ -195,14 +196,15 @@ export function renderPlan(container, buildingId, levelId, {
   if (!zone) return;
 
   const svgNs = 'http://www.w3.org/2000/svg';
+  const vb = zone.viewBox || { width: 100, height: 100 };
   const svg = document.createElementNS(svgNs, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('viewBox', `0 0 ${vb.width} ${vb.height}`);
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', `${PLAN_CONFIG[buildingId].label} — ${level.label} — ${zone.label}`);
   svg.classList.add('plan-svg');
 
   const outer = document.createElementNS(svgNs, 'rect');
-  outer.setAttribute('x', '1'); outer.setAttribute('y', '2'); outer.setAttribute('width', '98'); outer.setAttribute('height', '96');
+  outer.setAttribute('x', '0.5'); outer.setAttribute('y', '0.5'); outer.setAttribute('width', String(vb.width - 1)); outer.setAttribute('height', String(vb.height - 1));
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
   svg.appendChild(outer);
 
@@ -231,6 +233,8 @@ export function renderPlan(container, buildingId, levelId, {
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('dominant-baseline', 'middle');
     label.classList.add('room-label');
+    const labelSize = Math.max(0.95, Math.min(2.1, room.w / Math.max(5, room.name.length * 0.42)));
+    label.setAttribute('font-size', String(labelSize));
     label.textContent = room.name;
 
     const code = document.createElementNS(svgNs, 'text');
@@ -238,7 +242,9 @@ export function renderPlan(container, buildingId, levelId, {
     code.setAttribute('y', room.y + room.h / 2 + 7);
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
-    code.textContent = room.code || room.id.split('-').slice(-1)[0];
+    const codeSize = Math.max(0.9, Math.min(1.8, room.w / 4.2));
+    code.setAttribute('font-size', String(codeSize));
+    code.textContent = room.code || '';
 
     const activate = () => {
       if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
