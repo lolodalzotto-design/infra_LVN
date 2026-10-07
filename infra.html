@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d223a" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Espace Infra — LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261007-simple-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261007-planviz-1" />
 </head>
 <body>
 <main>
@@ -57,11 +57,11 @@
         <div id="urgent-list" class="priority-list"></div>
       </section>
 
-      <section class="panel plans-overview-panel admin-overview">
+      <section class="panel plan-visualizer-panel admin-overview">
         <div class="panel-heading">
           <div>
-            <h2>Vue d’ensemble des niveaux</h2>
-            <div class="help">Trois plans seulement : Rez-de-chaussée, R+1 et R+2. Les couleurs correspondent aux anomalies visibles avec les filtres sélectionnés.</div>
+            <h2>Visualisation des plans</h2>
+            <div class="help">Choisissez un plan pour voir directement les anomalies sur la carte.</div>
           </div>
           <div class="plan-status-legend" aria-label="Légende des plans">
             <span><i class="legend-dot legend-red"></i>À traiter</span>
@@ -69,7 +69,27 @@
             <span><i class="legend-dot legend-green"></i>Résolu</span>
           </div>
         </div>
-        <div id="global-plans" class="infra-plans global-plans"></div>
+
+        <div class="plan-picker">
+          <div class="field">
+            <label for="plan-building">Bâtiment</label>
+            <select id="plan-building"></select>
+          </div>
+          <div class="field">
+            <label for="plan-level">Niveau</label>
+            <select id="plan-level"></select>
+          </div>
+          <div id="plan-zone-field" class="field">
+            <label for="plan-zone">Zone</label>
+            <select id="plan-zone"></select>
+          </div>
+        </div>
+
+        <div class="plan-visualizer-meta">
+          <strong id="plan-title"></strong>
+          <span id="plan-anomaly-count" class="help"></span>
+        </div>
+        <div id="selected-plan" class="plan-canvas plan-visualizer-canvas"></div>
       </section>
 
       <section class="panel anomaly-list-panel">
@@ -81,6 +101,6 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261007-simple-1"></script>
+  <script type="module" src="./js/infra.js?v=20261007-planviz-1"></script>
 </body>
 </html>
