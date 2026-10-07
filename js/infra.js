@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-onboarding-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-onboarding-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-no-filters-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-no-filters-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-onboarding-1';
+} from './store.js?v=20261007-no-filters-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -33,7 +33,6 @@ const els = {
   notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
-  filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   planBuilding: $('#plan-building'), planLevel: $('#plan-level'), planZone: $('#plan-zone'), planZoneField: $('#plan-zone-field'),
   selectedPlan: $('#selected-plan'), planTitle: $('#plan-title'), planAnomalyCount: $('#plan-anomaly-count'),
   urgentPanel: $('#urgent-panel'), urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
@@ -286,10 +285,6 @@ function closeShell() {
   profileUnsubscribe?.(); profileUnsubscribe = null;
 }
 
-function fillCategories() {
-  els.filterCategory.innerHTML = '<option value="all">Toutes les catégories</option>' + CATEGORIES.map(c => `<option>${escapeHtml(c)}</option>`).join('');
-}
-
 function renderKpis(rows = filteredAnomalies()) {
   const total = rows.length;
   const open = rows.filter(a => a.status === 'a_traiter').length;
@@ -301,15 +296,7 @@ function renderKpis(rows = filteredAnomalies()) {
 }
 
 function filteredAnomalies() {
-  const status = els.filterStatus.value, category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
-  return anomalies.filter(a => {
-    if (status === 'active' && a.status === 'resolu') return false;
-    if (!['all','active'].includes(status) && a.status !== status) return false;
-    if (category !== 'all' && a.category !== category) return false;
-    if (building !== 'all' && a.buildingId !== building) return false;
-    if (q && !`${a.description} ${a.roomName} ${a.reporterFirstName} ${a.reporterLastName} ${a.category}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  return anomalies;
 }
 
 function anomalyAgeDays(value) {
@@ -732,7 +719,6 @@ function openAnomalyModal(id) {
 }
 
 async function init() {
-  fillCategories();
   fillPlanBuildingOptions();
   const demo = getAppMode() === 'demo';
 
@@ -784,8 +770,6 @@ async function init() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeTopMenu();
   });
-  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
-  els.filterSearch.addEventListener('input', renderAll);
   els.planBuilding.addEventListener('change', refreshPlanLevelOptions);
   els.planLevel.addEventListener('change', refreshPlanZoneOptions);
   els.planZone.addEventListener('change', renderPlanVisualizer);
