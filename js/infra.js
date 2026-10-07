@@ -1,9 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-refplan-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-refplan-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-users-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-users-1';
 import {
-  getAppMode, hasInfraSession, loginInfra, logoutInfra,
+  getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser,
+  sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
+  setInfraUserActive, resendInfraPasswordReset,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-refplan-1';
+} from './store.js?v=20261007-users-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -15,11 +17,14 @@ const LOGIN_ERROR = 'Identifiant ou mot de passe incorrect.';
 
 let anomalies = [];
 let unsubscribe = null;
+let currentUser = null;
 
 const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
+  forgotPassword: $('#forgot-password-btn'), changePassword: $('#change-password-btn'),
+  manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
@@ -31,15 +36,21 @@ function toast(message) {
   setTimeout(() => node.remove(), 3200);
 }
 
-function openShell() {
+async function openShell(profile = null) {
+  currentUser = profile || await getCurrentInfraUser();
+  if (!currentUser?.authorized) throw new Error('Compte non autorisé.');
   els.loginWrap.classList.add('hidden');
   els.shell.classList.add('active');
   els.logout.classList.remove('hidden');
+  els.currentUser.textContent = `${currentUser.fullName} • ${currentUser.isAdmin ? 'Administrateur' : 'Service Infrastructure'}`;
+  els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin);
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
 }
 
 function closeShell() {
+  currentUser = null;
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
+  els.manageUsers.classList.add('hidden'); els.currentUser.textContent = '';
   unsubscribe?.(); unsubscribe = null;
 }
 
@@ -93,6 +104,150 @@ function modal(content) {
 }
 function closeModal() { els.modalRoot.innerHTML = ''; }
 
+function resolveLoginEmail(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === INFRA_OPERATOR) return INFRA_AUTH_EMAIL;
+  return raw.includes('@') ? raw : '';
+}
+
+function statusLabel(status) {
+  return status === 'a_traiter' ? 'À traiter' : status === 'en_cours' ? 'En cours' : status === 'resolu' ? 'Résolu' : status;
+}
+
+function buildActionLabel(anomaly, formData, nextStatus) {
+  const changes = [];
+  if (nextStatus !== anomaly.status) changes.push(`Statut : ${statusLabel(anomaly.status)} → ${statusLabel(nextStatus)}`);
+  if (String(formData.get('category') || '') !== String(anomaly.category || '')) changes.push('Catégorie modifiée');
+  if (String(formData.get('description') || '').trim() !== String(anomaly.description || '').trim()) changes.push('Description modifiée');
+  if ((formData.get('urgent') === 'on') !== !!anomaly.urgent) changes.push('Niveau d’urgence modifié');
+  if (String(formData.get('resolutionComment') || '').trim() !== String(anomaly.resolutionComment || '').trim()) changes.push('Commentaire de suivi modifié');
+  return changes.length ? changes.join(' • ') : 'Anomalie enregistrée sans changement';
+}
+
+function openForgotPasswordModal() {
+  const initial = els.username.value.trim();
+  modal(`<div class="modal-head"><div><h2>Mot de passe oublié</h2><div class="help">Un lien de réinitialisation sera envoyé à l’adresse e-mail du compte.</div></div><button class="icon-btn" data-close>×</button></div>
+    <form id="forgot-form"><div class="form-grid"><div class="field full"><label>Identifiant admin ou adresse e-mail *</label><input name="login" type="text" autocomplete="username" required value="${escapeHtml(initial)}" placeholder="infra_lvn ou nom@exemple.fr"></div></div>
+    <div class="submit-row"><button type="button" class="secondary" data-close>Annuler</button><button class="primary" type="submit">Envoyer le lien</button></div></form>`);
+  $('#forgot-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = resolveLoginEmail(fd.get('login'));
+    if (!email) { toast('Saisissez votre adresse e-mail.'); return; }
+    const button = e.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await sendInfraPasswordReset(email);
+      closeModal();
+      toast('Si ce compte existe, un e-mail de réinitialisation a été envoyé.');
+    } catch {
+      closeModal();
+      toast('Si ce compte existe, un e-mail de réinitialisation a été envoyé.');
+    }
+  });
+}
+
+function openChangePasswordModal() {
+  modal(`<div class="modal-head"><div><h2>Modifier mon mot de passe</h2><div class="help">${escapeHtml(currentUser?.fullName || '')}</div></div><button class="icon-btn" data-close>×</button></div>
+    <form id="password-form"><div class="form-grid">
+      <div class="field full"><label>Mot de passe actuel *</label><input name="currentPassword" type="password" autocomplete="current-password" required></div>
+      <div class="field full"><label>Nouveau mot de passe *</label><input name="newPassword" type="password" autocomplete="new-password" minlength="8" required></div>
+      <div class="field full"><label>Confirmer le nouveau mot de passe *</label><input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></div>
+    </div><div class="submit-row"><button type="button" class="secondary" data-close>Annuler</button><button class="primary" type="submit">Modifier</button></div></form>`);
+  $('#password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const currentPassword = String(fd.get('currentPassword') || '');
+    const newPassword = String(fd.get('newPassword') || '');
+    const confirmPassword = String(fd.get('confirmPassword') || '');
+    if (newPassword.length < 8) { toast('Le nouveau mot de passe doit contenir au moins 8 caractères.'); return; }
+    if (newPassword !== confirmPassword) { toast('Les deux nouveaux mots de passe ne correspondent pas.'); return; }
+    const button = e.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await changeInfraPassword(currentPassword, newPassword);
+      closeModal();
+      toast('Mot de passe modifié.');
+    } catch {
+      button.disabled = false;
+      toast('Mot de passe actuel incorrect ou modification impossible.');
+    }
+  });
+}
+
+async function openUsersModal() {
+  if (!currentUser?.isAdmin) return;
+  try {
+    const users = await listInfraUsers();
+    modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service Infrastructure. Une révocation coupe immédiatement l’accès aux données Infra.</div></div><button class="icon-btn" data-close>×</button></div>
+      <div class="account-list">${users.map((u) => `<article class="account-card">
+        <div class="account-main">
+          <div class="account-name">${escapeHtml(u.fullName || 'Utilisateur')}</div>
+          <div class="account-email">${escapeHtml(u.email || '')}</div>
+          <div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'Infrastructure'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div>
+        </div>
+        <div class="account-actions">
+          <button class="secondary account-reset" type="button" data-email="${escapeHtml(u.email || '')}">Réinitialiser le mot de passe</button>
+          ${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Révoquer l’accès' : 'Réactiver'}</button>`}
+        </div>
+      </article>`).join('')}</div>
+      <form id="create-user-form" class="account-create">
+        <h3>Ajouter un membre Infrastructure</h3>
+        <div class="form-grid">
+          <div class="field"><label>Prénom *</label><input name="firstName" required maxlength="60" autocomplete="off"></div>
+          <div class="field"><label>Nom *</label><input name="lastName" required maxlength="60" autocomplete="off"></div>
+          <div class="field full"><label>Adresse e-mail personnelle *</label><input name="email" type="email" required maxlength="160" autocomplete="off"></div>
+        </div>
+        <div class="help">Le compte est créé automatiquement et l’utilisateur reçoit un e-mail pour définir son propre mot de passe.</div>
+        <div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div>
+      </form>`);
+
+    els.modalRoot.querySelectorAll('.account-reset').forEach((button) => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await resendInfraPasswordReset(button.dataset.email); toast('E-mail de réinitialisation envoyé.'); }
+      catch { toast('Impossible d’envoyer l’e-mail.'); }
+      finally { button.disabled = false; }
+    }));
+
+    els.modalRoot.querySelectorAll('.account-toggle').forEach((button) => button.addEventListener('click', async () => {
+      const activate = button.dataset.active !== '1';
+      button.disabled = true;
+      try {
+        await setInfraUserActive(button.dataset.id, activate);
+        toast(activate ? 'Accès réactivé.' : 'Accès révoqué.');
+        closeModal();
+        await openUsersModal();
+      } catch (err) {
+        button.disabled = false;
+        toast(err.message || 'Modification impossible.');
+      }
+    }));
+
+    $('#create-user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.currentTarget);
+      const button = e.currentTarget.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const created = await createInfraUser({
+          firstName: String(fd.get('firstName') || '').trim(),
+          lastName: String(fd.get('lastName') || '').trim(),
+          email: String(fd.get('email') || '').trim()
+        });
+        toast(`Compte de ${created.fullName} créé. E-mail envoyé.`);
+        closeModal();
+        await openUsersModal();
+      } catch (err) {
+        button.disabled = false;
+        const message = err?.code === 'auth/email-already-in-use' ? 'Cette adresse e-mail possède déjà un compte.' : (err.message || 'Création impossible.');
+        toast(message);
+      }
+    });
+  } catch (err) {
+    toast(err.message || 'Impossible de charger les comptes.');
+  }
+}
+
 function openRoomModal(roomId) {
   const room = getRoom(roomId); const rows = anomalies.filter(a => a.roomId === roomId && a.status !== 'resolu');
   modal(`<div class="modal-head"><div><h2>${escapeHtml(room.name)}</h2><div class="help">${escapeHtml(room.buildingLabel)} • ${escapeHtml(room.levelLabel)}</div></div><button class="icon-btn" data-close>×</button></div>
@@ -116,7 +271,7 @@ function openCreateModal(preselectedRoomId = '') {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const room = getRoom(fd.get('roomId')); const description = String(fd.get('description')).trim(); const category = String(fd.get('category') || '');
     if (!room || !description || !CATEGORIES.includes(category)) return;
     try {
-      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:INFRA_OPERATOR, description, category, urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
+      await createAnomaly({ roomId:room.id, roomName:room.name, buildingId:room.buildingId, levelId:room.levelId, reporterFirstName:'', reporterLastName:'', actor:currentUser?.fullName || 'Service Infra', description, category, urgent:fd.get('urgent')==='on', source:'infra' }, $('#infra-create-photo').files?.[0] || null);
       closeModal(); toast('Anomalie créée.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
@@ -169,17 +324,17 @@ function openAnomalyModal(id) {
 
   $('#update-form').addEventListener('submit', async e => {
     e.preventDefault(); const fd = new FormData(e.currentTarget); const status = fd.get('status');
-    const label = status !== a.status ? `Statut passé à ${status === 'a_traiter' ? 'À traiter' : status === 'en_cours' ? 'En cours' : 'Résolu'}` : 'Anomalie mise à jour';
+    const label = buildActionLabel(a, fd, status);
     const roomActive = status !== 'resolu' || anomalies.some(x => x.id !== id && x.roomId === a.roomId && x.status !== 'resolu');
     try {
-      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:INFRA_OPERATOR, actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null, roomId:a.roomId, roomActive });
+      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:currentUser?.fullName || 'Service Infra', actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null, roomId:a.roomId, roomActive });
       closeModal(); toast('Anomalie mise à jour.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
   $('#delete-anomaly').addEventListener('click', async () => {
     if (!confirm('Supprimer ce signalement créé par erreur ?')) return;
     const roomActive = anomalies.some(x => x.id !== id && x.roomId === a.roomId && x.status !== 'resolu');
-    try { await deleteAnomaly(id, INFRA_OPERATOR, { roomId:a.roomId, roomActive }); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
+    try { await deleteAnomaly(id, currentUser?.fullName || 'Service Infra', { roomId:a.roomId, roomActive }); closeModal(); toast('Signalement supprimé.'); } catch(err) { toast(err.message || 'Erreur'); }
   });
 }
 
@@ -191,8 +346,8 @@ async function init() {
     e.preventDefault();
     els.loginError.textContent = '';
     els.loginError.classList.add('hidden');
-    const username = els.username.value.trim().toLowerCase();
-    if (username !== INFRA_OPERATOR) {
+    const email = resolveLoginEmail(els.username.value);
+    if (!email) {
       els.loginError.textContent = LOGIN_ERROR;
       els.loginError.classList.remove('hidden');
       return;
@@ -200,8 +355,8 @@ async function init() {
     const submitBtn = els.loginForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     try {
-      await loginInfra(INFRA_AUTH_EMAIL, els.password.value);
-      openShell();
+      const { profile } = await loginInfra(email, els.password.value);
+      await openShell(profile);
     } catch {
       els.loginError.textContent = LOGIN_ERROR;
       els.loginError.classList.remove('hidden');
@@ -211,11 +366,14 @@ async function init() {
   });
 
   try {
-    if (await hasInfraSession()) openShell();
+    if (await hasInfraSession()) await openShell(await getCurrentInfraUser());
   } catch {
     // Le formulaire reste disponible si le contrôle de session échoue.
   }
 
+  els.forgotPassword.addEventListener('click', openForgotPasswordModal);
+  els.changePassword.addEventListener('click', openChangePasswordModal);
+  els.manageUsers.addEventListener('click', openUsersModal);
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
   [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderList));
   els.filterSearch.addEventListener('input', renderList);
