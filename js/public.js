@@ -3,16 +3,18 @@ import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1405';
 import { renderPlan } from './ui.js?v=20261007-1405';
 import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-1405';
 
-let selectedBuilding = 'A';
-let selectedLevel = 'RDC';
-let selectedZone = 'caserne';
+let selectedBuilding = null;
+let selectedLevel = null;
+let selectedZone = null;
 let selectedRoom = null;
 let roomStatus = {};
 
 const els = {
   buildingButtons: [...document.querySelectorAll('[data-building]')],
+  step2: document.querySelector('#step-2'),
+  step3: document.querySelector('#step-3'),
+  step4: document.querySelector('#step-4'),
   levelButtons: document.querySelector('#level-buttons'),
-  zoneWrap: document.querySelector('#zone-wrap'),
   zoneButtons: document.querySelector('#zone-buttons'),
   plans: document.querySelector('#plans'),
   formCard: document.querySelector('#report-card'),
@@ -32,7 +34,7 @@ function toast(message) {
 }
 
 function currentBuilding() {
-  return PLAN_CONFIG[selectedBuilding];
+  return selectedBuilding ? PLAN_CONFIG[selectedBuilding] : null;
 }
 
 function currentLevel() {
@@ -50,8 +52,6 @@ function resetRoomSelection() {
 
 function renderLevelButtons() {
   const levels = Object.entries(currentBuilding()?.levels || {});
-  if (!currentBuilding()?.levels?.[selectedLevel]) selectedLevel = levels[0]?.[0] || 'RDC';
-
   els.levelButtons.innerHTML = levels.map(([levelId, level]) =>
     `<button type="button" class="segment-btn ${levelId === selectedLevel ? 'active' : ''}" data-level="${levelId}">${level.label}</button>`
   ).join('');
@@ -59,24 +59,23 @@ function renderLevelButtons() {
   els.levelButtons.querySelectorAll('[data-level]').forEach((button) => {
     button.addEventListener('click', () => {
       selectedLevel = button.dataset.level;
-      selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
+      selectedZone = null;
       resetRoomSelection();
-      renderSelectorsAndPlan();
+
+      els.levelButtons.querySelectorAll('[data-level]').forEach((b) => {
+        b.classList.toggle('active', b === button);
+      });
+
+      els.step3.classList.remove('hidden');
+      els.step4.classList.add('hidden');
+      els.plans.innerHTML = '';
+      renderZoneButtons();
     });
   });
 }
 
 function renderZoneButtons() {
   const zones = availableZones();
-  if (!currentLevel()?.zones?.[selectedZone]) selectedZone = zones[0]?.[0] || 'caserne';
-
-  const needsChoice = zones.length > 1;
-  els.zoneWrap.classList.toggle('hidden', !needsChoice);
-
-  if (!needsChoice) {
-    els.zoneButtons.innerHTML = '';
-    return;
-  }
 
   els.zoneButtons.innerHTML = zones.map(([zoneId, zone]) =>
     `<button type="button" class="segment-btn ${zoneId === selectedZone ? 'active' : ''}" data-zone="${zoneId}">${zone.label}</button>`
@@ -86,13 +85,20 @@ function renderZoneButtons() {
     button.addEventListener('click', () => {
       selectedZone = button.dataset.zone;
       resetRoomSelection();
-      renderSelectorsAndPlan();
+
+      els.zoneButtons.querySelectorAll('[data-zone]').forEach((b) => {
+        b.classList.toggle('active', b === button);
+      });
+
+      els.step4.classList.remove('hidden');
+      renderCurrentPlan();
     });
   });
 }
 
 function renderCurrentPlan() {
   els.plans.innerHTML = '';
+  if (!selectedBuilding || !selectedLevel || !selectedZone) return;
   const building = currentBuilding();
   const level = currentLevel();
   const zone = level?.zones?.[selectedZone];
@@ -129,12 +135,6 @@ function renderCurrentPlan() {
   els.plans.appendChild(card);
 }
 
-function renderSelectorsAndPlan() {
-  renderLevelButtons();
-  renderZoneButtons();
-  renderCurrentPlan();
-}
-
 function selectRoom(room) {
   const building = currentBuilding();
   const level = currentLevel();
@@ -160,11 +160,20 @@ function selectRoom(room) {
 els.buildingButtons.forEach((button) => {
   button.addEventListener('click', () => {
     selectedBuilding = button.dataset.building;
-    selectedLevel = Object.keys(currentBuilding()?.levels || {})[0] || 'RDC';
-    selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
+    selectedLevel = null;
+    selectedZone = null;
     resetRoomSelection();
+
     els.buildingButtons.forEach((b) => b.classList.toggle('active', b === button));
-    renderSelectorsAndPlan();
+
+    els.step2.classList.remove('hidden');
+    els.step3.classList.add('hidden');
+    els.step4.classList.add('hidden');
+    els.levelButtons.innerHTML = '';
+    els.zoneButtons.innerHTML = '';
+    els.plans.innerHTML = '';
+
+    renderLevelButtons();
   });
 });
 
@@ -226,7 +235,7 @@ els.form.addEventListener('submit', async (event) => {
 
 subscribeRoomStatus((status) => {
   roomStatus = status || {};
-  renderCurrentPlan();
+  if (selectedBuilding && selectedLevel && selectedZone && !els.step4.classList.contains('hidden')) {
+    renderCurrentPlan();
+  }
 });
-
-renderSelectorsAndPlan();
