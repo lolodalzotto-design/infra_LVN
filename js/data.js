@@ -183,6 +183,7 @@ export const PLAN_CONFIG = {
         }
       }
     },
+  },
   B: {
     label: 'Bâtiment B',
     levels: {
