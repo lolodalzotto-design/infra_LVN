@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-users-2';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-users-2';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-dashboard-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-dashboard-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-users-2';
+} from './store.js?v=20261007-dashboard-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -29,6 +29,7 @@ const els = {
   list: $('#anomaly-list'), listCount: $('#list-count'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
+  statusChart: $('#status-chart'), overviewStats: $('#overview-stats'), overviewFilterNote: $('#overview-filter-note'), globalPlans: $('#global-plans'),
   modalRoot: $('#modal-root')
 };
 
@@ -45,6 +46,7 @@ async function openShell(profile = null) {
   els.logout.classList.remove('hidden');
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
+  document.querySelectorAll('.admin-overview').forEach(node => node.classList.toggle('hidden', !currentUser.isAdmin));
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => { anomalies = rows; renderAll(); syncRoomStatuses(rows).catch(() => {}); });
   if (!profileUnsubscribe) {
     profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
@@ -68,30 +70,158 @@ function fillCategories() {
   els.filterCategory.innerHTML = '<option value="all">Toutes les catégories</option>' + CATEGORIES.map(c => `<option>${escapeHtml(c)}</option>`).join('');
 }
 
-function renderKpis() {
-  const total = anomalies.length;
-  const open = anomalies.filter(a => a.status === 'a_traiter').length;
-  const progress = anomalies.filter(a => a.status === 'en_cours').length;
-  const resolved = anomalies.filter(a => a.status === 'resolu').length;
-  const pct = total ? Math.round((resolved / total) * 100) : 100;
+function renderKpis(rows = filteredAnomalies()) {
+  const total = rows.length;
+  const open = rows.filter(a => a.status === 'a_traiter').length;
+  const progress = rows.filter(a => a.status === 'en_cours').length;
+  const resolved = rows.filter(a => a.status === 'resolu').length;
+  const pct = total ? Math.round((resolved / total) * 100) : 0;
   els.total.textContent = total; els.open.textContent = open; els.progress.textContent = progress; els.resolved.textContent = resolved;
-  els.bar.style.width = `${pct}%`; els.percent.textContent = `${pct} % réalisé`;
+  els.bar.style.width = `${pct}%`; els.percent.textContent = `${pct} % résolu`;
 }
 
 function filteredAnomalies() {
-  const s = els.filterStatus.value, c = els.filterCategory.value, b = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
+  const status = els.filterStatus.value, category = els.filterCategory.value, building = els.filterBuilding.value, q = els.filterSearch.value.trim().toLowerCase();
   return anomalies.filter(a => {
-    if (s === 'active' && a.status === 'resolu') return false;
-    if (!['all','active'].includes(s) && a.status !== s) return false;
-    if (c !== 'all' && a.category !== c) return false;
-    if (b !== 'all' && a.buildingId !== b) return false;
+    if (status === 'active' && a.status === 'resolu') return false;
+    if (!['all','active'].includes(status) && a.status !== status) return false;
+    if (category !== 'all' && a.category !== category) return false;
+    if (building !== 'all' && a.buildingId !== building) return false;
     if (q && !`${a.description} ${a.roomName} ${a.reporterFirstName} ${a.reporterLastName} ${a.category}`.toLowerCase().includes(q)) return false;
     return true;
   });
 }
 
-function renderList() {
-  const rows = filteredAnomalies();
+function currentFilterLabel() {
+  const parts = [];
+  const statusText = els.filterStatus.options[els.filterStatus.selectedIndex]?.textContent;
+  const categoryText = els.filterCategory.options[els.filterCategory.selectedIndex]?.textContent;
+  const buildingText = els.filterBuilding.options[els.filterBuilding.selectedIndex]?.textContent;
+  if (buildingText) parts.push(buildingText);
+  if (statusText) parts.push(statusText);
+  if (categoryText) parts.push(categoryText);
+  const q = els.filterSearch.value.trim();
+  if (q) parts.push(`Recherche : “${q}”`);
+  return parts.join(' · ');
+}
+
+function renderStatusChart(rows) {
+  const total = rows.length;
+  const values = [
+    { label:'À traiter', count:rows.filter(a => a.status === 'a_traiter').length, color:'red' },
+    { label:'En cours', count:rows.filter(a => a.status === 'en_cours').length, color:'orange' },
+    { label:'Résolues', count:rows.filter(a => a.status === 'resolu').length, color:'green' }
+  ];
+  els.overviewFilterNote.textContent = currentFilterLabel();
+  els.statusChart.innerHTML = values.map(item => {
+    const width = total ? (item.count / total) * 100 : 0;
+    return `<div class="status-chart-row">
+      <div class="status-chart-label">${item.label}</div>
+      <div class="status-chart-track"><div class="status-chart-fill ${item.color}" style="width:${width}%"></div></div>
+      <div class="status-chart-value">${item.count}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderOverviewStats(rows) {
+  const affectedRooms = new Set(rows.map(a => a.roomId).filter(Boolean)).size;
+  const urgent = rows.filter(a => a.urgent).length;
+  const buildingA = rows.filter(a => a.buildingId === 'A').length;
+  const buildingB = rows.filter(a => a.buildingId === 'B').length;
+  els.overviewStats.innerHTML = [
+    [affectedRooms, 'Pièces concernées'],
+    [urgent, 'Urgences'],
+    [buildingA, 'Bâtiment A'],
+    [buildingB, 'Bâtiment B']
+  ].map(([value,label]) => `<div class="overview-stat"><strong>${value}</strong><span>${label}</span></div>`).join('');
+}
+
+function planEntries() {
+  const entries = [];
+  Object.entries(PLAN_CONFIG).forEach(([buildingId, building]) => {
+    Object.entries(building.levels || {}).forEach(([levelId, level]) => {
+      Object.entries(level.zones || {}).forEach(([zoneId, zone]) => {
+        entries.push({ buildingId, building, levelId, level, zoneId, zone });
+      });
+    });
+  });
+  return entries;
+}
+
+function renderGlobalPlans(rows) {
+  const buildingFilter = els.filterBuilding.value;
+  const levelOrder = ['RDC', 'R1', 'R2'];
+  const entries = planEntries();
+  els.globalPlans.replaceChildren();
+
+  levelOrder.forEach((levelId) => {
+    const levelEntries = entries.filter(entry =>
+      entry.levelId === levelId
+      && (buildingFilter === 'all' || entry.buildingId === buildingFilter)
+    );
+    if (!levelEntries.length) return;
+
+    const levelBlock = document.createElement('section');
+    levelBlock.className = 'global-level-block';
+    const levelLabel = levelEntries[0]?.level?.label || levelId;
+    levelBlock.innerHTML = `<div class="global-level-title"><span>${escapeHtml(levelLabel)}</span><small>Vue d’ensemble du niveau</small></div>`;
+
+    const levelGrid = document.createElement('div');
+    levelGrid.className = 'global-level-grid';
+
+    ['A','B'].forEach((buildingId) => {
+      if (buildingFilter !== 'all' && buildingFilter !== buildingId) return;
+      const building = PLAN_CONFIG[buildingId];
+      if (!building) return;
+
+      const column = document.createElement('div');
+      column.className = 'global-building-column';
+      const buildingEntries = levelEntries.filter(entry => entry.buildingId === buildingId);
+
+      if (!buildingEntries.length) {
+        column.innerHTML = `<div class="global-building-head"><strong>${escapeHtml(building.label)}</strong></div>
+          <div class="global-plan-empty">Aucun plan ${escapeHtml(levelLabel)} pour ce bâtiment.</div>`;
+        levelGrid.appendChild(column);
+        return;
+      }
+
+      const buildingRows = rows.filter(a => a.buildingId === buildingId && a.levelId === levelId);
+      column.innerHTML = `<div class="global-building-head">
+        <strong>${escapeHtml(building.label)}</strong>
+        <span>${buildingRows.length} anomalie${buildingRows.length > 1 ? 's' : ''}</span>
+      </div>`;
+
+      buildingEntries.forEach((entry) => {
+        const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
+        const planRows = rows.filter(a => roomIds.has(a.roomId));
+        const activeCount = planRows.filter(a => a.status !== 'resolu').length;
+        const card = document.createElement('article');
+        card.className = `plan-card global-plan-card ${activeCount >= 3 ? 'hotspot' : ''}`;
+        card.innerHTML = `<div class="plan-card-title">
+          <strong>${escapeHtml(entry.zone.label)}</strong>
+          <span class="plan-card-count">${planRows.length} anomalie${planRows.length > 1 ? 's' : ''}</span>
+        </div><div class="plan-canvas"></div>`;
+        column.appendChild(card);
+
+        const canvas = card.querySelector('.plan-canvas');
+        renderPlan(canvas, entry.buildingId, entry.levelId, {
+          zoneId: entry.zoneId,
+          mode: 'infra',
+          anomalies: planRows,
+          statusColors: true,
+          onRoomClick: (room) => openOverviewRoom(room.id)
+        });
+      });
+
+      levelGrid.appendChild(column);
+    });
+
+    levelBlock.appendChild(levelGrid);
+    els.globalPlans.appendChild(levelBlock);
+  });
+}
+
+function renderList(rows = filteredAnomalies()) {
   els.listCount.textContent = `(${rows.length})`;
   if (!rows.length) { els.list.innerHTML = '<div class="empty">Aucune anomalie pour ces filtres.</div>'; return; }
   els.list.innerHTML = rows.map(a => {
@@ -104,7 +234,16 @@ function renderList() {
   els.list.querySelectorAll('.view-anomaly').forEach(btn => btn.addEventListener('click', () => openAnomalyModal(btn.closest('[data-anomaly-id]').dataset.anomalyId)));
 }
 
-function renderAll() { renderKpis(); renderList(); }
+function renderAll() {
+  const rows = filteredAnomalies();
+  renderKpis(rows);
+  if (currentUser?.isAdmin) {
+    renderStatusChart(rows);
+    renderOverviewStats(rows);
+    renderGlobalPlans(rows);
+  }
+  renderList(rows);
+}
 
 function modal(content) {
   els.modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal">${content}</section></div>`;
@@ -113,6 +252,30 @@ function modal(content) {
   els.modalRoot.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
 }
 function closeModal() { els.modalRoot.innerHTML = ''; }
+
+function openOverviewRoom(roomId) {
+  const room = getRoom(roomId);
+  const rows = filteredAnomalies().filter(a => a.roomId === roomId);
+  if (!rows.length) {
+    toast('Aucune anomalie correspondant aux filtres pour cette pièce.');
+    return;
+  }
+  if (rows.length === 1) {
+    openAnomalyModal(rows[0].id);
+    return;
+  }
+
+  modal(`<div class="modal-head"><div><h2>${escapeHtml(room?.name || 'Pièce')}</h2><div class="help">${rows.length} anomalies correspondant aux filtres</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="room-popup-list">${rows.map(a => `<article class="anomaly-card ${a.urgent ? 'urgent' : ''}">
+      <div class="anomaly-top"><strong>${a.urgent ? '🚨 ' : ''}${escapeHtml(a.description)}</strong>${statusBadge(a.status)}</div>
+      <div class="anomaly-meta"><span>${escapeHtml(a.category || 'Autre')}</span><span>${formatDate(a.createdAt)}</span></div>
+      <div class="submit-row" style="margin-top:8px"><button type="button" class="secondary overview-open" data-id="${escapeHtml(a.id)}">Ouvrir</button></div>
+    </article>`).join('')}</div>`);
+
+  els.modalRoot.querySelectorAll('.overview-open').forEach(button => {
+    button.addEventListener('click', () => openAnomalyModal(button.dataset.id));
+  });
+}
 
 function resolveLoginEmail(value) {
   const raw = String(value || '').trim().toLowerCase();
@@ -379,8 +542,8 @@ async function init() {
   els.changePassword.addEventListener('click', openChangePasswordModal);
   els.manageUsers.addEventListener('click', openUsersModal);
   els.logout.addEventListener('click', async () => { await logoutInfra(); closeShell(); });
-  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderList));
-  els.filterSearch.addEventListener('input', renderList);
+  [els.filterStatus,els.filterCategory,els.filterBuilding].forEach(x => x.addEventListener('change', renderAll));
+  els.filterSearch.addEventListener('input', renderAll);
 
   if (demo) {
     window.addEventListener('keydown', e => {
