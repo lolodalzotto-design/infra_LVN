@@ -1,4 +1,4 @@
-import { PLAN_CONFIG } from './data.js?v=20261007-1120';
+import { PLAN_CONFIG } from './data.js?v=20261007-1140';
 
 export const STATUS_LABELS = {
   a_traiter: 'À traiter',
