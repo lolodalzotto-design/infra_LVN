@@ -108,7 +108,7 @@ function renderCurrentPlan() {
     <div class="plan-legend" aria-label="Légende du plan">
       <span class="plan-legend-item"><i class="plan-legend-dot ok"></i>OK</span>
       <span class="plan-legend-item"><i class="plan-legend-dot alert"></i>Anomalie</span>
-      <span class="plan-legend-hint">${rotationTest ? '2 doigts : zoom • déplacement • rotation' : 'Touchez une pièce • pincez pour zoomer'}</span>
+      <span class="plan-legend-hint">${rotationTest ? '1 doigt : déplacer • 2 doigts : zoom + rotation' : 'Touchez une pièce • pincez pour zoomer'}</span>
     </div>
     <div class="plan-canvas"></div>
   `;
