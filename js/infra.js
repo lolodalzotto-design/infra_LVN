@@ -150,27 +150,74 @@ function planEntries() {
 
 function renderGlobalPlans(rows) {
   const buildingFilter = els.filterBuilding.value;
-  const entries = planEntries().filter(entry => buildingFilter === 'all' || entry.buildingId === buildingFilter);
+  const levelOrder = ['RDC', 'R1', 'R2'];
+  const entries = planEntries();
   els.globalPlans.replaceChildren();
 
-  entries.forEach((entry) => {
-    const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
-    const planRows = rows.filter(a => roomIds.has(a.roomId));
-    const card = document.createElement('article');
-    card.className = 'plan-card global-plan-card';
-    card.innerHTML = `<div class="plan-card-title">
-      <strong>${escapeHtml(entry.building.label)} — ${escapeHtml(entry.level.label)} — ${escapeHtml(entry.zone.label)}</strong>
-      <span class="plan-card-count">${planRows.length} anomalie${planRows.length > 1 ? 's' : ''}</span>
-    </div><div class="plan-canvas"></div>`;
-    els.globalPlans.appendChild(card);
-    const canvas = card.querySelector('.plan-canvas');
-    renderPlan(canvas, entry.buildingId, entry.levelId, {
-      zoneId: entry.zoneId,
-      mode: 'infra',
-      anomalies: planRows,
-      statusColors: true,
-      onRoomClick: (room) => openOverviewRoom(room.id)
+  levelOrder.forEach((levelId) => {
+    const levelEntries = entries.filter(entry =>
+      entry.levelId === levelId
+      && (buildingFilter === 'all' || entry.buildingId === buildingFilter)
+    );
+    if (!levelEntries.length) return;
+
+    const levelBlock = document.createElement('section');
+    levelBlock.className = 'global-level-block';
+    const levelLabel = levelEntries[0]?.level?.label || levelId;
+    levelBlock.innerHTML = `<div class="global-level-title"><span>${escapeHtml(levelLabel)}</span><small>Vue d’ensemble du niveau</small></div>`;
+
+    const levelGrid = document.createElement('div');
+    levelGrid.className = 'global-level-grid';
+
+    ['A','B'].forEach((buildingId) => {
+      if (buildingFilter !== 'all' && buildingFilter !== buildingId) return;
+      const building = PLAN_CONFIG[buildingId];
+      if (!building) return;
+
+      const column = document.createElement('div');
+      column.className = 'global-building-column';
+      const buildingEntries = levelEntries.filter(entry => entry.buildingId === buildingId);
+
+      if (!buildingEntries.length) {
+        column.innerHTML = `<div class="global-building-head"><strong>${escapeHtml(building.label)}</strong></div>
+          <div class="global-plan-empty">Aucun plan ${escapeHtml(levelLabel)} pour ce bâtiment.</div>`;
+        levelGrid.appendChild(column);
+        return;
+      }
+
+      const buildingRows = rows.filter(a => a.buildingId === buildingId && a.levelId === levelId);
+      column.innerHTML = `<div class="global-building-head">
+        <strong>${escapeHtml(building.label)}</strong>
+        <span>${buildingRows.length} anomalie${buildingRows.length > 1 ? 's' : ''}</span>
+      </div>`;
+
+      buildingEntries.forEach((entry) => {
+        const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
+        const planRows = rows.filter(a => roomIds.has(a.roomId));
+        const activeCount = planRows.filter(a => a.status !== 'resolu').length;
+        const card = document.createElement('article');
+        card.className = `plan-card global-plan-card ${activeCount >= 3 ? 'hotspot' : ''}`;
+        card.innerHTML = `<div class="plan-card-title">
+          <strong>${escapeHtml(entry.zone.label)}</strong>
+          <span class="plan-card-count">${planRows.length} anomalie${planRows.length > 1 ? 's' : ''}</span>
+        </div><div class="plan-canvas"></div>`;
+        column.appendChild(card);
+
+        const canvas = card.querySelector('.plan-canvas');
+        renderPlan(canvas, entry.buildingId, entry.levelId, {
+          zoneId: entry.zoneId,
+          mode: 'infra',
+          anomalies: planRows,
+          statusColors: true,
+          onRoomClick: (room) => openOverviewRoom(room.id)
+        });
+      });
+
+      levelGrid.appendChild(column);
     });
+
+    levelBlock.appendChild(levelGrid);
+    els.globalPlans.appendChild(levelBlock);
   });
 }
 
