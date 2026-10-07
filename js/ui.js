@@ -402,7 +402,12 @@ export function renderPlan(container, buildingId, levelId, {
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(); }
     });
 
-    group.append(shape, label, code);
+    if (zone.planImage) {
+      // Le plan d'origine porte déjà les vrais noms et codes : ne rien réécrire par-dessus.
+      group.append(shape);
+    } else {
+      group.append(shape, label, code);
+    }
     svg.appendChild(group);
   });
 
