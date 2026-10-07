@@ -116,7 +116,7 @@ function closeModal() { els.modalRoot.innerHTML = ''; }
 
 function resolveLoginEmail(value) {
   const raw = String(value || '').trim().toLowerCase();
-  if (raw === INFRA_OPERATOR) return INFRA_AUTH_EMAIL;
+  if ([INFRA_OPERATOR, 'infra-lvn'].includes(raw)) return INFRA_AUTH_EMAIL;
   return raw.includes('@') ? raw : '';
 }
 
@@ -244,7 +244,9 @@ async function openUsersModal() {
           lastName: String(fd.get('lastName') || '').trim(),
           email: String(fd.get('email') || '').trim()
         });
-        toast(`Compte de ${created.fullName} créé. E-mail envoyé.`);
+        toast(created.resetEmailSent
+          ? `Compte de ${created.fullName} créé. E-mail envoyé.`
+          : `Compte de ${created.fullName} créé. Utilisez « Réinitialiser le mot de passe » pour renvoyer l’e-mail.`);
         closeModal();
         await openUsersModal();
       } catch (err) {
