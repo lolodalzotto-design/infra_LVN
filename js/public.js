@@ -103,8 +103,12 @@ function renderCurrentPlan() {
   card.innerHTML = `
     <h3>
       <span>${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''}</span>
-      <span class="plan-note">Touchez une pièce</span>
     </h3>
+    <div class="plan-legend" aria-label="Légende du plan">
+      <span class="plan-legend-item"><i class="plan-legend-dot ok"></i>OK</span>
+      <span class="plan-legend-item"><i class="plan-legend-dot alert"></i>Anomalie</span>
+      <span class="plan-legend-hint">Touchez une pièce • pincez pour zoomer</span>
+    </div>
     <div class="plan-canvas"></div>
   `;
 
