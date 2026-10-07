@@ -1,11 +1,12 @@
 import { PLAN_CONFIG, classifyCategory } from './data.js';
 import { renderPlan } from './ui.js';
-import { createAnomaly, preparePublicSession } from './store.js';
+import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js';
 
 let selectedBuilding = 'A';
 let selectedLevel = 'RDC';
 let selectedZone = 'caserne';
 let selectedRoom = null;
+let roomStatus = {};
 
 const els = {
   buildingButtons: [...document.querySelectorAll('[data-building]')],
@@ -59,7 +60,12 @@ function renderLevelButtons() {
       selectedLevel = button.dataset.level;
       selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
       resetRoomSelection();
-      renderSelectorsAndPlan();
+      subscribeRoomStatus((status) => {
+  roomStatus = status || {};
+  renderCurrentPlan();
+});
+
+renderSelectorsAndPlan();
     });
   });
 }
@@ -109,6 +115,7 @@ function renderCurrentPlan() {
   renderPlan(card.querySelector('.plan-canvas'), selectedBuilding, selectedLevel, {
     zoneId: selectedZone,
     mode: 'public',
+    roomStatus,
     selectedRoomId: selectedRoom?.id,
     onRoomClick: selectRoom
   });
