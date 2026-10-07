@@ -321,6 +321,7 @@ export async function createInfraUser({ firstName, lastName, email }) {
   const secondaryApp = appMod.initializeApp(firebaseConfig, `infra-create-${uid()}`);
   const secondaryAuth = authMod.getAuth(secondaryApp);
   let createdUser = null;
+  let profileCreated = false;
 
   try {
     const credential = await authMod.createUserWithEmailAndPassword(
@@ -341,9 +342,15 @@ export async function createInfraUser({ firstName, lastName, email }) {
       updatedAt: fsMod.serverTimestamp(),
       createdByUid: current.uid
     });
+    profileCreated = true;
 
-    const { auth } = await getFirebase();
-    await authMod.sendPasswordResetEmail(auth, normalized);
+    let resetEmailSent = true;
+    try {
+      const { auth } = await getFirebase();
+      await authMod.sendPasswordResetEmail(auth, normalized);
+    } catch {
+      resetEmailSent = false;
+    }
 
     return {
       uid: createdUser.uid,
@@ -352,10 +359,11 @@ export async function createInfraUser({ firstName, lastName, email }) {
       email: normalized,
       role: 'infra',
       active: true,
-      fullName: `${first} ${last}`
+      fullName: `${first} ${last}`,
+      resetEmailSent
     };
   } catch (error) {
-    if (createdUser) {
+    if (createdUser && !profileCreated) {
       try { await authMod.deleteUser(createdUser); } catch {}
     }
     throw error;
