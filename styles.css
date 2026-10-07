@@ -339,3 +339,78 @@ body.plan-fullscreen-body { overflow:hidden; }
   .account-card{align-items:flex-start;flex-direction:column}
   .account-actions{width:100%;justify-content:flex-start}
 }
+
+
+/* Admin global dashboard */
+.kpi-total { border-color:#cbd5e1; background:linear-gradient(180deg,#ffffff,#f8fafc); }
+.kpi-open { border-color:#efb8bc; background:linear-gradient(180deg,#fff,#fff4f4); box-shadow:inset 0 4px 0 var(--red),0 6px 18px rgba(18,34,56,.05); }
+.kpi-progress { border-color:#efcf9b; background:linear-gradient(180deg,#fff,#fff8ed); box-shadow:inset 0 4px 0 #d98200,0 6px 18px rgba(18,34,56,.05); }
+.kpi-resolved { border-color:#b8dcc5; background:linear-gradient(180deg,#fff,#f1fbf5); box-shadow:inset 0 4px 0 var(--green),0 6px 18px rgba(18,34,56,.05); }
+.kpi-open .value { color:var(--red); }
+.kpi-progress .value { color:#b76700; }
+.kpi-resolved .value { color:var(--green); }
+
+.overview-grid { display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.55fr);gap:14px;margin:14px 0; }
+.panel-heading { display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:13px; }
+.panel-heading h2 { margin-bottom:4px; }
+.status-chart { display:grid;gap:12px;margin-top:8px; }
+.status-chart-row { display:grid;grid-template-columns:82px minmax(0,1fr) 42px;align-items:center;gap:10px; }
+.status-chart-label { font-size:.78rem;font-weight:850;color:#475569; }
+.status-chart-track { height:18px;border-radius:999px;background:#eef2f6;overflow:hidden;position:relative; }
+.status-chart-fill { height:100%;min-width:0;border-radius:999px;transition:width .2s ease; }
+.status-chart-fill.red { background:var(--red); }
+.status-chart-fill.orange { background:#d98200; }
+.status-chart-fill.green { background:var(--green); }
+.status-chart-value { font-weight:950;text-align:right;font-variant-numeric:tabular-nums; }
+.status-legend,.plan-status-legend { display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:14px;color:var(--muted);font-size:.72rem;font-weight:800; }
+.legend-dot { display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0; }
+.legend-red { background:var(--red); }
+.legend-orange { background:#d98200; }
+.legend-green { background:var(--green); }
+
+.overview-stats { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+.overview-stat { padding:13px;border:1px solid var(--line);border-radius:13px;background:#f8fafc; }
+.overview-stat strong { display:block;font-size:1.35rem;line-height:1;font-weight:950;color:var(--navy); }
+.overview-stat span { display:block;margin-top:5px;color:var(--muted);font-size:.72rem;font-weight:750; }
+
+.plans-overview-panel { margin:14px 0; }
+.global-plans { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.global-plan-card { min-width:0; }
+.global-plan-card .plan-card-title { display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:9px; }
+.global-plan-card .plan-card-title strong { font-size:.88rem;line-height:1.25; }
+.global-plan-card .plan-card-count { font-size:.68rem;color:var(--muted);font-weight:800;white-space:nowrap; }
+.global-plan-card .plan-canvas { aspect-ratio:1.65 / 1;min-height:220px; }
+.global-plan-card.is-dimmed { opacity:.52; }
+.anomaly-list-panel { margin-top:14px; }
+
+.plan-room.room-orange .plan-shape { fill:rgba(217,130,0,.15);stroke:#d98200; }
+.plan-room.room-orange.room-selected .plan-shape { fill:#d98200;stroke:#b76700; }
+.plan-room.room-orange.room-selected .room-label,
+.plan-room.room-orange.room-selected .room-code { fill:#fff; }
+
+.plan-has-image .plan-room.room-neutral .plan-shape {
+  fill:transparent;
+  stroke:rgba(96,110,126,.12);
+  stroke-width:.55;
+}
+.plan-has-image .plan-room.room-orange .plan-shape {
+  fill:rgba(217,130,0,.14);
+  stroke:rgba(217,130,0,.92);
+  stroke-width:1.05;
+}
+.plan-has-image .plan-room.room-orange.room-selected .plan-shape {
+  fill:rgba(217,130,0,.38);
+  stroke:#b76700;
+  stroke-width:1.8;
+}
+
+@media (max-width:840px) {
+  .overview-grid { grid-template-columns:1fr; }
+  .global-plans { grid-template-columns:1fr; }
+}
+@media (max-width:640px) {
+  .panel-heading { flex-direction:column; }
+  .plan-status-legend { margin-top:0; }
+  .global-plan-card .plan-canvas { min-height:300px; }
+  .status-chart-row { grid-template-columns:72px minmax(0,1fr) 34px;gap:8px; }
+}
