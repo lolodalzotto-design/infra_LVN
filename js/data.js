@@ -32,7 +32,7 @@ export const PLAN_CONFIG = {
               { id:'A-RDC-CAS-MEA', code:'', name:'MEA', x:0.20, y:18.742, w:6.477, h:2.193 },
               { id:'A-RDC-CAS-PORCHE', code:'', name:'Porche entrée', x:11.935, y:5.419, w:5.065, h:28.000 },
               { id:'A-RDC-CAS-A025', code:'A025', name:'Standard', x:17.03, y:0.20, w:6.77, h:5.22,
-                points:[[17.03,5.42],[17.03,2.05],[19.45,0.20],[21.40,0.20],[23.80,2.05],[23.80,5.42]] },
+                points:[[17.03,5.387],[17.03,2.05],[19.45,0.20],[21.40,0.20],[23.774,2.05],[23.774,5.387]] },
               { id:'A-RDC-CAS-A026', code:'A026', name:'Local MTS', x:17.000, y:5.387, w:6.774, h:10.452 },
               { id:'A-RDC-CAS-A026BIS', code:'A026 Bis', name:'Local radios', x:17.000, y:15.839, w:6.774, h:5.096 },
               { id:'A-RDC-CAS-A024', code:'A024', name:'Chambrée VSAV 1', x:23.774, y:5.387, w:5.549, h:10.452 },
