@@ -25,7 +25,8 @@ export const PLAN_CONFIG = {
           caserne: {
             label: 'Caserne',
             viewBox: { width: 100, height: 40 },
-            planImage: './assets/plans/A-RDC-caserne.webp?v=20261007-0955',
+            coordinateScaleY: 1,
+            planImage: './assets/plans/A-RDC-caserne.webp?v=20261007-1030',
             rooms: [
               { id:'A-RDC-CAS-ENT10', code:'', name:'Entrée BAT 10', x:6.52, y:5.42, w:5.55, h:13.35 },
               { id:'A-RDC-CAS-MEA', code:'', name:'MEA', x:0.20, y:18.90, w:6.10, h:3.16 },
@@ -62,9 +63,9 @@ export const PLAN_CONFIG = {
           },
           garage: {
             label: 'Garage',
-            viewBox: { width: 100, height: 107.833333 },
-            coordinateScaleY: 1.253875965,
-            planImage: './assets/plans/A-RDC-garage.webp?v=20261007-0955',
+            viewBox: { width: 100, height: 90 },
+            coordinateScaleY: 1.046511628,
+            planImage: './assets/plans/A-RDC-garage.webp?v=20261007-1030',
             rooms: [
               { id:'A-RDC-GAR-A035', code:'A035', name:'Garage VSAV', x:2.33, y:23.20, w:16.67, h:35.90 },
               { id:'A-RDC-GAR-A036', code:'A036', name:'Garage CVGD VRCG2', x:2.33, y:59.10, w:16.75, h:16.35 },
@@ -94,7 +95,9 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            viewBox: { width: 100, height: 24 },
+            viewBox: { width: 100, height: 25.333333 },
+            coordinateScaleY: 1.055555542,
+            planImage: './assets/plans/A-R1.webp?v=20261007-1030',
             rooms: [
               { id:'A-R1-A126', code:'A126', name:'Chambrée / vestiaire niv 3 pair', x:1.5, y:0.7, w:12.4, h:11.6, points:[[1.5,0.7],[13.9,0.7],[13.9,11.8],[4.4,11.8]] },
               { id:'A-R1-ENT6', code:'', name:'Entrée BAT 6', x:13.9, y:0.7, w:3.6, h:4.9 },
@@ -152,7 +155,9 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            viewBox: { width: 100, height: 33 },
+            viewBox: { width: 100, height: 36.666667 },
+            coordinateScaleY: 1.111111121,
+            planImage: './assets/plans/A-R2.webp?v=20261007-1030',
             rooms: [
               { id:'A-R2-A214', code:'A214', name:'Chambrée niv 3 impair', x:1.7, y:0.0, w:16.9, h:16.8, points:[[1.7,0],[18.6,0],[18.6,16.8],[5.5,16.8]] },
               { id:'A-R2-ENT6', code:'', name:'Entrée BAT 6', x:18.6, y:0.0, w:6.4, h:7.0 },
@@ -195,7 +200,9 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            viewBox: { width: 100, height: 72 },
+            viewBox: { width: 100, height: 71.523179 },
+            coordinateScaleY: 0.993377486,
+            planImage: './assets/plans/B-RDC-caserne.webp?v=20261007-1030',
             rooms: [
               { id:'B-RDC-CAS-B002', code:'B002', name:'Salle Crossfit', x:0.0, y:0.0, w:18.5, h:46.5 },
               { id:'B-RDC-CAS-B003', code:'B003', name:'Magasin incendie', x:18.5, y:0.0, w:13.5, h:46.5 },
@@ -212,7 +219,9 @@ export const PLAN_CONFIG = {
           },
           garage: {
             label: 'Garage',
-            viewBox: { width: 100, height: 35 },
+            viewBox: { width: 100, height: 93.103448 },
+            coordinateScaleY: 2.660098514,
+            planImage: './assets/plans/B-RDC-garage.webp?v=20261007-1030',
             rooms: [
               { id:'B-RDC-GAR-B001-T1', code:'B001', name:'Travée 1', x:0.0, y:0.0, w:18.0, h:35.0 },
               { id:'B-RDC-GAR-B001-T2', code:'B001', name:'Travée 2', x:18.0, y:0.0, w:18.0, h:35.0 },
@@ -231,7 +240,9 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            viewBox: { width: 100, height: 30 },
+            viewBox: { width: 100, height: 60.888889 },
+            coordinateScaleY: 2.029629633,
+            planImage: './assets/plans/B-R1.webp?v=20261007-1030',
             rooms: [
               { id:'B-R1-B109', code:'B109', name:'Salle musculation', x:0.0, y:0.0, w:39.5, h:15.8 },
               { id:'B-R1-B108', code:'B108', name:'Salle cardio', x:41.6, y:0.0, w:16.5, h:15.8 },
