@@ -1,5 +1,5 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-0945';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-0945';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-0955';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-0955';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
