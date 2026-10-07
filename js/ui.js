@@ -137,6 +137,9 @@ function enablePlanNavigation(container, svg, {
   let touchLastCenter = null;
   let touchLastAngle = null;
   let touchGestureActive = false;
+  let singleTouchStart = null;
+  let singleTouchLast = null;
+  let singleTouchPanActive = false;
 
   const controls = document.createElement('div');
   controls.className = 'plan-nav-controls';
@@ -162,8 +165,18 @@ function enablePlanNavigation(container, svg, {
     const minH = LIMIT.h / MAX_ZOOM;
     view.w = Math.min(LIMIT.w, Math.max(minW, view.w));
     view.h = Math.min(LIMIT.h, Math.max(minH, view.h));
-    view.x = Math.min(LIMIT.x + LIMIT.w - view.w, Math.max(LIMIT.x, view.x));
-    view.y = Math.min(LIMIT.y + LIMIT.h - view.h, Math.max(LIMIT.y, view.y));
+
+    // Sur mobile, on autorise un peu d'espace autour du plan pour pouvoir
+    // réellement le faire glisser à gauche/droite/haut/bas, même à l'échelle 1.
+    const extraX = nativeTouch ? Math.max(view.w * 0.38, LIMIT.w * 0.10) : 0;
+    const extraY = nativeTouch ? Math.max(view.h * 0.38, LIMIT.h * 0.10) : 0;
+    const minX = LIMIT.x - extraX;
+    const maxX = LIMIT.x + LIMIT.w - view.w + extraX;
+    const minY = LIMIT.y - extraY;
+    const maxY = LIMIT.y + LIMIT.h - view.h + extraY;
+
+    view.x = Math.min(maxX, Math.max(minX, view.x));
+    view.y = Math.min(maxY, Math.max(minY, view.y));
   };
 
   const clientToSvg = (clientX, clientY) => {
@@ -351,16 +364,49 @@ function enablePlanNavigation(container, svg, {
         };
         touchLastAngle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
       } else if (event.touches.length === 1) {
-        // Un nouveau tap simple doit rester sélectionnable, même après un pinch précédent.
+        // Un doigt : tap = sélectionner, glisser = déplacer le plan.
         touchGestureActive = false;
         moved = false;
         resetTouchGesture();
+        const t = event.touches[0];
+        singleTouchStart = { x: t.clientX, y: t.clientY };
+        singleTouchLast = { x: t.clientX, y: t.clientY };
+        singleTouchPanActive = false;
       }
     }, { passive: false });
 
     svg.addEventListener('touchmove', (event) => {
+      if (event.touches.length === 1 && singleTouchStart && singleTouchLast) {
+        const t = event.touches[0];
+        const current = { x: t.clientX, y: t.clientY };
+        const totalDistance = Math.hypot(
+          current.x - singleTouchStart.x,
+          current.y - singleTouchStart.y
+        );
+
+        // Petit seuil : un tap reste un tap, un glissement devient un pan.
+        if (!singleTouchPanActive && totalDistance >= 7) {
+          singleTouchPanActive = true;
+          moved = true;
+        }
+
+        if (singleTouchPanActive) {
+          event.preventDefault();
+          panBetweenClientPoints(singleTouchLast, current);
+          applyView();
+          svg.__suppressRoomClickUntil = Date.now() + 300;
+        }
+
+        singleTouchLast = current;
+        return;
+      }
+
       if (event.touches.length < 2) return;
       event.preventDefault();
+
+      singleTouchStart = null;
+      singleTouchLast = null;
+      singleTouchPanActive = false;
 
       const a = event.touches[0];
       const b = event.touches[1];
@@ -396,12 +442,15 @@ function enablePlanNavigation(container, svg, {
     }, { passive: false });
 
     svg.addEventListener('touchend', (event) => {
-      if (touchGestureActive) {
-        svg.__suppressRoomClickUntil = Date.now() + 350;
+      if (touchGestureActive || singleTouchPanActive) {
+        svg.__suppressRoomClickUntil = Date.now() + 300;
       }
       if (event.touches.length < 2) resetTouchGesture();
       if (event.touches.length === 0) {
         touchGestureActive = false;
+        singleTouchStart = null;
+        singleTouchLast = null;
+        singleTouchPanActive = false;
         moved = false;
       }
     }, { passive: false });
@@ -409,6 +458,9 @@ function enablePlanNavigation(container, svg, {
     svg.addEventListener('touchcancel', () => {
       resetTouchGesture();
       touchGestureActive = false;
+      singleTouchStart = null;
+      singleTouchLast = null;
+      singleTouchPanActive = false;
       moved = false;
     }, { passive: false });
   }
