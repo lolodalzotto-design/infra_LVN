@@ -118,7 +118,7 @@ function renderCurrentPlan() {
   const gestureTest = selectedBuilding === 'A' && selectedLevel === 'RDC' && selectedZone === 'caserne';
   canvas.style.aspectRatio = `${vb.width} / ${vb.height}`;
   canvas.style.minHeight = '0';
-  canvas.classList.toggle('plan-test-gesture', gestureTest);
+  canvas.classList.toggle('plan-vector-transparent', gestureTest);
 
   renderPlan(canvas, selectedBuilding, selectedLevel, {
     zoneId: selectedZone,
