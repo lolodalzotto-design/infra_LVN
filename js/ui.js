@@ -98,12 +98,13 @@ function buildRoomLabelLayout(room) {
 function enablePlanNavigation(container, svg, {
   allowRotation = false,
   nativeTouch = false,
-  initialZoom = 1
+  initialZoom = 1,
+  exactFit = false
 } = {}) {
   const vb = svg.viewBox.baseVal;
   const CONTENT = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
-  const padX = CONTENT.w * 0.035;
-  const padY = CONTENT.h * 0.055;
+  const padX = exactFit ? 0 : CONTENT.w * 0.035;
+  const padY = exactFit ? 0 : CONTENT.h * 0.055;
   const LIMIT = {
     x: CONTENT.x - padX,
     y: CONTENT.y - padY,
@@ -526,7 +527,8 @@ export function renderPlan(container, buildingId, levelId, {
   enablePlanNavigation(container, svg, {
     allowRotation: gestureTest,
     nativeTouch: gestureTest,
-    initialZoom: gestureTest ? 1.35 : 1
+    initialZoom: 1,
+    exactFit: gestureTest
   });
 }
 
