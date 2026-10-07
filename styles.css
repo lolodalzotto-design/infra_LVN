@@ -46,6 +46,7 @@ main { max-width:1180px;margin:0 auto;padding:22px 16px 64px; }
 .plan-shell { fill:#fff;stroke:#9ea9b6;stroke-width:.45; }
 .plan-room { cursor:pointer; outline:none; }
 .plan-room rect { stroke-width:1.05; transition:.15s ease; vector-effect:non-scaling-stroke; }
+.plan-room.room-neutral rect { fill:#fff;stroke:#98a5b3; }
 .plan-room.room-green rect { fill:var(--green-soft);stroke:var(--green); }
 .plan-room.room-red rect { fill:var(--red-soft);stroke:var(--red); }
 .plan-room:hover rect, .plan-room:focus rect { filter:brightness(.92);stroke-width:1.65; }
@@ -149,4 +150,14 @@ footer { text-align:center;color:#7a8796;font-size:.72rem;padding:28px 16px 40px
 @media (max-width:640px) {
   .dashboard-heading { margin-top:2px;margin-bottom:18px; }
   .dashboard-heading h1 { font-size:2.35rem; }
+}
+
+.level-segmented { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.single-plan { grid-template-columns:1fr; }
+.single-plan .plan-card { width:100%; }
+.single-plan .plan-canvas { aspect-ratio: 1.7 / 1; min-height:320px; }
+@media (max-width:640px) {
+  .level-segmented { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .level-segmented .segment-btn { padding:13px 8px; }
+  .single-plan .plan-canvas { aspect-ratio:auto; min-height:420px; }
 }
