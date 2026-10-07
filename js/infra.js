@@ -30,7 +30,7 @@ const els = {
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   filterStatus: $('#filter-status'), filterCategory: $('#filter-category'), filterBuilding: $('#filter-building'), filterSearch: $('#filter-search'),
   globalPlans: $('#global-plans'),
-  urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
+  urgentPanel: $('#urgent-panel'), urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
   modalRoot: $('#modal-root')
 };
 
@@ -106,6 +106,7 @@ function renderPriorityPanels(rows) {
     .slice()
     .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+  els.urgentPanel.classList.toggle('hidden', urgentRows.length === 0);
   els.urgentCount.textContent = urgentRows.length;
   els.urgentList.innerHTML = urgentRows.length ? urgentRows.slice(0,5).map(a => {
     const room = getRoom(a.roomId);
