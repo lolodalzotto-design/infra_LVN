@@ -95,23 +95,46 @@ function buildRoomLabelLayout(room) {
   };
 }
 
-function enablePlanNavigation(container, svg) {
+function enablePlanNavigation(container, svg, {
+  allowRotation = false,
+  nativeTouch = false,
+  initialZoom = 1
+} = {}) {
   const vb = svg.viewBox.baseVal;
   const CONTENT = { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
-  const padX = CONTENT.w * 0.065;
-  const padY = CONTENT.h * 0.09;
-  const BASE = {
+  const padX = CONTENT.w * 0.035;
+  const padY = CONTENT.h * 0.055;
+  const LIMIT = {
     x: CONTENT.x - padX,
     y: CONTENT.y - padY,
     w: CONTENT.w + padX * 2,
     h: CONTENT.h + padY * 2
   };
-  const MAX_ZOOM = 7;
-  let view = { ...BASE };
+  const safeInitialZoom = Math.max(1, Math.min(1.6, initialZoom || 1));
+  const HOME = {
+    w: LIMIT.w / safeInitialZoom,
+    h: LIMIT.h / safeInitialZoom
+  };
+  HOME.x = LIMIT.x + (LIMIT.w - HOME.w) / 2;
+  HOME.y = LIMIT.y + (LIMIT.h - HOME.h) / 2;
+
+  const MAX_ZOOM = 8;
+  let view = { ...HOME };
+  let rotation = 0;
+  const scene = svg.querySelector('.plan-scene');
+  const rotationCenter = {
+    x: CONTENT.x + CONTENT.w / 2,
+    y: CONTENT.y + CONTENT.h / 2
+  };
+
   const pointers = new Map();
-  let pinchLastDistance = null;
-  let pinchLastCenter = null;
+  let pointerLastDistance = null;
+  let pointerLastCenter = null;
   let moved = false;
+
+  let touchLastDistance = null;
+  let touchLastCenter = null;
+  let touchLastAngle = null;
 
   const controls = document.createElement('div');
   controls.className = 'plan-nav-controls';
@@ -124,13 +147,21 @@ function enablePlanNavigation(container, svg) {
 
   const applyView = () => {
     svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
+    if (scene) {
+      scene.setAttribute(
+        'transform',
+        allowRotation ? `rotate(${rotation} ${rotationCenter.x} ${rotationCenter.y})` : ''
+      );
+    }
   };
 
   const clampView = () => {
-    view.w = Math.min(BASE.w, Math.max(BASE.w / MAX_ZOOM, view.w));
-    view.h = Math.min(BASE.h, Math.max(BASE.h / MAX_ZOOM, view.h));
-    view.x = Math.min(BASE.x + BASE.w - view.w, Math.max(BASE.x, view.x));
-    view.y = Math.min(BASE.y + BASE.h - view.h, Math.max(BASE.y, view.y));
+    const minW = LIMIT.w / MAX_ZOOM;
+    const minH = LIMIT.h / MAX_ZOOM;
+    view.w = Math.min(LIMIT.w, Math.max(minW, view.w));
+    view.h = Math.min(LIMIT.h, Math.max(minH, view.h));
+    view.x = Math.min(LIMIT.x + LIMIT.w - view.w, Math.max(LIMIT.x, view.x));
+    view.y = Math.min(LIMIT.y + LIMIT.h - view.h, Math.max(LIMIT.y, view.y));
   };
 
   const clientToSvg = (clientX, clientY) => {
@@ -147,14 +178,22 @@ function enablePlanNavigation(container, svg) {
     const anchor = clientToSvg(clientX, clientY);
     const ratioX = (anchor.x - view.x) / view.w;
     const ratioY = (anchor.y - view.y) / view.h;
-    const nextW = Math.min(BASE.w, Math.max(BASE.w / MAX_ZOOM, view.w * factor));
-    const nextH = Math.min(BASE.h, Math.max(BASE.h / MAX_ZOOM, view.h * factor));
+    const nextW = Math.min(LIMIT.w, Math.max(LIMIT.w / MAX_ZOOM, view.w * factor));
+    const nextH = Math.min(LIMIT.h, Math.max(LIMIT.h / MAX_ZOOM, view.h * factor));
     view.x = anchor.x - ratioX * nextW;
     view.y = anchor.y - ratioY * nextH;
     view.w = nextW;
     view.h = nextH;
     clampView();
     applyView();
+  };
+
+  const panBetweenClientPoints = (from, to) => {
+    const before = clientToSvg(from.x, from.y);
+    const after = clientToSvg(to.x, to.y);
+    view.x -= after.x - before.x;
+    view.y -= after.y - before.y;
+    clampView();
   };
 
   const zoomFromCenter = (factor) => {
@@ -166,13 +205,16 @@ function enablePlanNavigation(container, svg) {
     event.stopPropagation();
     zoomFromCenter(0.72);
   });
+
   controls.querySelector('[data-plan-zoom-out]').addEventListener('click', (event) => {
     event.stopPropagation();
     zoomFromCenter(1.38);
   });
+
   controls.querySelector('[data-plan-reset]').addEventListener('click', (event) => {
     event.stopPropagation();
-    view = { ...BASE };
+    view = { ...HOME };
+    rotation = 0;
     applyView();
   });
 
@@ -218,31 +260,34 @@ function enablePlanNavigation(container, svg) {
     zoomAt(event.deltaY < 0 ? 0.82 : 1.22, event.clientX, event.clientY);
   }, { passive: false });
 
+  // Souris / stylet. Sur mobile tactile, le gestionnaire TouchEvent ci-dessous
+  // prend la main afin d'avoir un vrai pinch + rotation à deux doigts.
   svg.addEventListener('pointerdown', (event) => {
+    if (nativeTouch && event.pointerType === 'touch') return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     svg.setPointerCapture?.(event.pointerId);
     moved = false;
 
     if (pointers.size === 2) {
       const pts = [...pointers.values()];
-      pinchLastDistance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      pinchLastCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      pointerLastDistance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      pointerLastCenter = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2
+      };
     }
   });
 
   svg.addEventListener('pointermove', (event) => {
+    if (nativeTouch && event.pointerType === 'touch') return;
     const previous = pointers.get(event.pointerId);
     if (!previous) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointers.size === 1) {
-      if (view.w >= BASE.w - 0.01 && view.h >= BASE.h - 0.01) return;
-      const before = clientToSvg(previous.x, previous.y);
-      const after = clientToSvg(event.clientX, event.clientY);
-      if (Math.abs(event.clientX - previous.x) + Math.abs(event.clientY - previous.y) > 3) moved = true;
-      view.x -= after.x - before.x;
-      view.y -= after.y - before.y;
-      clampView();
+      const current = { x: event.clientX, y: event.clientY };
+      if (Math.abs(current.x - previous.x) + Math.abs(current.y - previous.y) > 3) moved = true;
+      panBetweenClientPoints(previous, current);
       applyView();
       return;
     }
@@ -250,43 +295,107 @@ function enablePlanNavigation(container, svg) {
     if (pointers.size === 2) {
       const pts = [...pointers.values()];
       const distance = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      const center = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      const center = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2
+      };
 
-      if (pinchLastCenter) {
-        const before = clientToSvg(pinchLastCenter.x, pinchLastCenter.y);
-        const after = clientToSvg(center.x, center.y);
-        view.x -= after.x - before.x;
-        view.y -= after.y - before.y;
-        clampView();
-      }
-
-      if (pinchLastDistance && distance > 0) {
-        zoomAt(pinchLastDistance / distance, center.x, center.y);
+      if (pointerLastCenter) panBetweenClientPoints(pointerLastCenter, center);
+      if (pointerLastDistance && distance > 0) {
+        zoomAt(pointerLastDistance / distance, center.x, center.y);
       } else {
         applyView();
       }
 
-      pinchLastDistance = distance;
-      pinchLastCenter = center;
+      pointerLastDistance = distance;
+      pointerLastCenter = center;
       moved = true;
     }
   });
 
   const finishPointer = (event) => {
+    if (nativeTouch && event.pointerType === 'touch') return;
     pointers.delete(event.pointerId);
     try { svg.releasePointerCapture?.(event.pointerId); } catch {}
-    if (moved) svg.__suppressRoomClickUntil = Date.now() + 250;
+    if (moved) svg.__suppressRoomClickUntil = Date.now() + 300;
     if (pointers.size < 2) {
-      pinchLastDistance = null;
-      pinchLastCenter = null;
+      pointerLastDistance = null;
+      pointerLastCenter = null;
     }
   };
 
   svg.addEventListener('pointerup', finishPointer);
   svg.addEventListener('pointercancel', finishPointer);
 
+  if (nativeTouch) {
+    const resetTouchGesture = () => {
+      touchLastDistance = null;
+      touchLastCenter = null;
+      touchLastAngle = null;
+    };
+
+    svg.addEventListener('touchstart', (event) => {
+      if (event.touches.length >= 2) {
+        event.preventDefault();
+        const a = event.touches[0];
+        const b = event.touches[1];
+        touchLastDistance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        touchLastCenter = {
+          x: (a.clientX + b.clientX) / 2,
+          y: (a.clientY + b.clientY) / 2
+        };
+        touchLastAngle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+        moved = true;
+      }
+    }, { passive: false });
+
+    svg.addEventListener('touchmove', (event) => {
+      if (event.touches.length < 2) return;
+      event.preventDefault();
+
+      const a = event.touches[0];
+      const b = event.touches[1];
+      const distance = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      const center = {
+        x: (a.clientX + b.clientX) / 2,
+        y: (a.clientY + b.clientY) / 2
+      };
+      const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+      if (touchLastCenter) {
+        panBetweenClientPoints(touchLastCenter, center);
+      }
+
+      if (allowRotation && touchLastAngle !== null) {
+        let delta = angle - touchLastAngle;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        rotation += delta;
+      }
+
+      if (touchLastDistance && distance > 0) {
+        zoomAt(touchLastDistance / distance, center.x, center.y);
+      } else {
+        applyView();
+      }
+
+      touchLastDistance = distance;
+      touchLastCenter = center;
+      touchLastAngle = angle;
+      moved = true;
+      svg.__suppressRoomClickUntil = Date.now() + 350;
+    }, { passive: false });
+
+    svg.addEventListener('touchend', (event) => {
+      if (event.touches.length < 2) resetTouchGesture();
+      if (moved) svg.__suppressRoomClickUntil = Date.now() + 350;
+    }, { passive: false });
+
+    svg.addEventListener('touchcancel', resetTouchGesture, { passive: false });
+  }
+
   container.classList.add('plan-navigable');
-  container.classList.remove('plan-rotation-enabled');
+  container.classList.toggle('plan-rotation-enabled', allowRotation);
   container.appendChild(controls);
   applyView();
 }
@@ -413,7 +522,12 @@ export function renderPlan(container, buildingId, levelId, {
   });
 
   container.replaceChildren(svg);
-  enablePlanNavigation(container, svg);
+  const gestureTest = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
+  enablePlanNavigation(container, svg, {
+    allowRotation: gestureTest,
+    nativeTouch: gestureTest,
+    initialZoom: gestureTest ? 1.25 : 1
+  });
 }
 
 export function statusBadge(status) {
