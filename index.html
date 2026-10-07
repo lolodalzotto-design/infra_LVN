@@ -16,11 +16,19 @@
       <button type="button" class="segment-btn" data-building="B">Bâtiment B</button>
     </div>
 
-    <div class="step-title"><span class="step-number">2</span>Sélectionnez la pièce sur le plan</div>
-    <section id="plans" class="plans-grid"></section>
+    <div class="step-title"><span class="step-number">2</span>À quel niveau êtes-vous ?</div>
+    <div id="level-buttons" class="segmented level-segmented" aria-label="Choix du niveau"></div>
+
+    <div id="zone-wrap">
+      <div class="step-title"><span class="step-number">3</span>Dans quelle partie êtes-vous ?</div>
+      <div id="zone-buttons" class="segmented" aria-label="Choix de la zone"></div>
+    </div>
+
+    <div class="step-title"><span class="step-number">4</span>Sélectionnez la pièce</div>
+    <section id="plans" class="plans-grid single-plan"></section>
 
     <section id="report-card" class="form-card hidden">
-      <div class="step-title" style="margin-top:0"><span class="step-number">3</span>Décrivez le problème</div>
+      <div class="step-title" style="margin-top:0"><span class="step-number">5</span>Décrivez le problème</div>
       <div class="selected-room">✓ <span id="selected-room-text"></span></div>
 
       <form id="report-form">
@@ -56,7 +64,7 @@
     </section>
   </main>
 
-  <footer>infra_LVN • V0 — plans provisoires en attente des plans réels</footer>
+  <footer>infra_LVN • Signalement infrastructure</footer>
   <script type="module" src="./js/public.js"></script>
 </body>
 </html>
