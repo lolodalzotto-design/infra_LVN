@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-command-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-command-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-levels-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-levels-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-command-1';
+} from './store.js?v=20261007-levels-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -227,75 +227,56 @@ function planEntries() {
 }
 
 function renderGlobalPlans(rows) {
-  const buildingFilter = els.filterBuilding.value;
-  const levelOrder = ['RDC', 'R1', 'R2'];
+  const levelOrder = [
+    { id:'RDC', label:'Rez-de-chaussée' },
+    { id:'R1', label:'R+1' },
+    { id:'R2', label:'R+2' }
+  ];
   const entries = planEntries();
   els.globalPlans.replaceChildren();
 
-  levelOrder.forEach((levelId) => {
-    const levelEntries = entries.filter(entry =>
-      entry.levelId === levelId
-      && (buildingFilter === 'all' || entry.buildingId === buildingFilter)
-    );
+  levelOrder.forEach(({ id: levelId, label }) => {
+    const levelEntries = entries.filter(entry => entry.levelId === levelId);
     if (!levelEntries.length) return;
 
-    const levelBlock = document.createElement('section');
-    levelBlock.className = 'global-level-block';
-    const levelLabel = levelEntries[0]?.level?.label || levelId;
-    levelBlock.innerHTML = `<div class="global-level-title"><span>${escapeHtml(levelLabel)}</span><small>Vue d’ensemble du niveau</small></div>`;
+    const levelRows = rows.filter(a => a.levelId === levelId);
+    const activeCount = levelRows.filter(a => a.status !== 'resolu').length;
 
-    const levelGrid = document.createElement('div');
-    levelGrid.className = 'global-level-grid';
+    const card = document.createElement('article');
+    card.className = `level-overview-card ${activeCount >= 3 ? 'hotspot' : ''}`;
+    card.innerHTML = `<div class="level-overview-head">
+      <div>
+        <h3>${escapeHtml(label)}</h3>
+        <div class="help">${levelRows.length} anomalie${levelRows.length > 1 ? 's' : ''} visible${levelRows.length > 1 ? 's' : ''}</div>
+      </div>
+      <div class="level-overview-status">
+        <span class="level-count red">${levelRows.filter(a => a.status === 'a_traiter').length}</span>
+        <span class="level-count orange">${levelRows.filter(a => a.status === 'en_cours').length}</span>
+        <span class="level-count green">${levelRows.filter(a => a.status === 'resolu').length}</span>
+      </div>
+    </div><div class="level-plan-composite"></div>`;
 
-    ['A','B'].forEach((buildingId) => {
-      if (buildingFilter !== 'all' && buildingFilter !== buildingId) return;
-      const building = PLAN_CONFIG[buildingId];
-      if (!building) return;
+    const composite = card.querySelector('.level-plan-composite');
+    composite.classList.add(`segments-${levelEntries.length}`);
 
-      const column = document.createElement('div');
-      column.className = 'global-building-column';
-      const buildingEntries = levelEntries.filter(entry => entry.buildingId === buildingId);
+    levelEntries.forEach((entry) => {
+      const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
+      const planRows = rows.filter(a => roomIds.has(a.roomId));
 
-      if (!buildingEntries.length) {
-        column.innerHTML = `<div class="global-building-head"><strong>${escapeHtml(building.label)}</strong></div>
-          <div class="global-plan-empty">Aucun plan ${escapeHtml(levelLabel)} pour ce bâtiment.</div>`;
-        levelGrid.appendChild(column);
-        return;
-      }
+      const fragment = document.createElement('div');
+      fragment.className = 'level-plan-fragment';
+      composite.appendChild(fragment);
 
-      const buildingRows = rows.filter(a => a.buildingId === buildingId && a.levelId === levelId);
-      column.innerHTML = `<div class="global-building-head">
-        <strong>${escapeHtml(building.label)}</strong>
-        <span>${buildingRows.length} anomalie${buildingRows.length > 1 ? 's' : ''}</span>
-      </div>`;
-
-      buildingEntries.forEach((entry) => {
-        const roomIds = new Set((entry.zone.rooms || []).map(room => room.id));
-        const planRows = rows.filter(a => roomIds.has(a.roomId));
-        const activeCount = planRows.filter(a => a.status !== 'resolu').length;
-        const card = document.createElement('article');
-        card.className = `plan-card global-plan-card ${activeCount >= 3 ? 'hotspot' : ''}`;
-        card.innerHTML = `<div class="plan-card-title">
-          <strong>${escapeHtml(entry.zone.label)}</strong>
-          <span class="plan-card-count">${planRows.length} anomalie${planRows.length > 1 ? 's' : ''}</span>
-        </div><div class="plan-canvas"></div>`;
-        column.appendChild(card);
-
-        const canvas = card.querySelector('.plan-canvas');
-        renderPlan(canvas, entry.buildingId, entry.levelId, {
-          zoneId: entry.zoneId,
-          mode: 'infra',
-          anomalies: planRows,
-          statusColors: true,
-          onRoomClick: (room) => openOverviewRoom(room.id)
-        });
+      renderPlan(fragment, entry.buildingId, entry.levelId, {
+        zoneId: entry.zoneId,
+        mode: 'infra',
+        anomalies: planRows,
+        statusColors: true,
+        onRoomClick: (room) => openOverviewRoom(room.id)
       });
-
-      levelGrid.appendChild(column);
     });
 
-    levelBlock.appendChild(levelGrid);
-    els.globalPlans.appendChild(levelBlock);
+    els.globalPlans.appendChild(card);
   });
 }
 
