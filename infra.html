@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d223a" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Espace Infra — LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261007-users-2" />
+  <link rel="stylesheet" href="./styles.css?v=20261007-dashboard-1" />
 </head>
 <body>
 <main>
@@ -37,10 +37,10 @@
       </div>
 
       <section class="dashboard-grid">
-        <article class="kpi"><div class="label">Anomalies totales</div><div id="kpi-total" class="value">0</div></article>
-        <article class="kpi"><div class="label">À traiter</div><div id="kpi-open" class="value">0</div></article>
-        <article class="kpi"><div class="label">En cours</div><div id="kpi-progress" class="value">0</div></article>
-        <article class="kpi"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % réalisé</div></article>
+        <article class="kpi kpi-total"><div class="label">Anomalies totales</div><div id="kpi-total" class="value">0</div></article>
+        <article class="kpi kpi-open"><div class="label">À traiter</div><div id="kpi-open" class="value">0</div></article>
+        <article class="kpi kpi-progress"><div class="label">En cours</div><div id="kpi-progress" class="value">0</div></article>
+        <article class="kpi kpi-resolved"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % réalisé</div></article>
       </section>
 
       <div class="toolbar">
@@ -50,7 +50,44 @@
         <input id="filter-search" type="search" placeholder="Rechercher…" />
       </div>
 
-      <section class="panel">
+      <section class="overview-grid">
+        <article class="panel overview-chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Vision globale</h2>
+              <div id="overview-filter-note" class="help">Ensemble des anomalies</div>
+            </div>
+          </div>
+          <div id="status-chart" class="status-chart" aria-label="Répartition graphique des anomalies"></div>
+          <div class="status-legend">
+            <span><i class="legend-dot legend-red"></i>À traiter</span>
+            <span><i class="legend-dot legend-orange"></i>En cours</span>
+            <span><i class="legend-dot legend-green"></i>Résolues</span>
+          </div>
+        </article>
+
+        <article class="panel overview-stats-panel">
+          <h2>Lecture rapide</h2>
+          <div id="overview-stats" class="overview-stats"></div>
+        </article>
+      </section>
+
+      <section class="panel plans-overview-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Tous les plans</h2>
+            <div class="help">Les couleurs correspondent aux anomalies visibles avec les filtres sélectionnés.</div>
+          </div>
+          <div class="plan-status-legend" aria-label="Légende des plans">
+            <span><i class="legend-dot legend-red"></i>À traiter</span>
+            <span><i class="legend-dot legend-orange"></i>En cours</span>
+            <span><i class="legend-dot legend-green"></i>Résolu</span>
+          </div>
+        </div>
+        <div id="global-plans" class="infra-plans global-plans"></div>
+      </section>
+
+      <section class="panel anomaly-list-panel">
         <h2>Liste des anomalies <span id="list-count" class="help"></span></h2>
         <div id="anomaly-list" class="anomaly-list"></div>
       </section>
@@ -59,6 +96,6 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261007-users-2"></script>
+  <script type="module" src="./js/infra.js?v=20261007-dashboard-1"></script>
 </body>
 </html>
