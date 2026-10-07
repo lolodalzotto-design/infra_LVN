@@ -95,72 +95,6 @@ function buildRoomLabelLayout(room) {
   };
 }
 
-function buildCrispPlanLabelLayout(room, scaleY = 1) {
-  const width = Math.max(0.8, Number(room.w) || 0.8);
-  const height = Math.max(0.8, (Number(room.h) || 0.8) * scaleY);
-  const words = String(room.name || '').trim().split(/\s+/).filter(Boolean);
-
-  if (!words.length) {
-    return {
-      lines: [],
-      fontSize: 0.78,
-      lineGap: 0.92,
-      codeSize: 0.72,
-      showCode: !!room.code
-    };
-  }
-
-  const maxLines =
-    height < 3.2 ? 1 :
-    height < 5.5 ? 2 :
-    height < 8.5 ? 3 : 4;
-
-  const makeLines = (count) => {
-    if (count <= 1 || words.length === 1) return [words.join(' ')];
-    const lines = [];
-    const target = words.reduce((sum, word) => sum + word.length, 0) / count;
-    let current = [];
-    let currentLength = 0;
-
-    for (const word of words) {
-      const projected = currentLength + (current.length ? 1 : 0) + word.length;
-      if (current.length && lines.length < count - 1 && projected > target) {
-        lines.push(current.join(' '));
-        current = [word];
-        currentLength = word.length;
-      } else {
-        current.push(word);
-        currentLength = projected;
-      }
-    }
-    if (current.length) lines.push(current.join(' '));
-    return lines;
-  };
-
-  let best = null;
-  for (let count = 1; count <= Math.min(maxLines, words.length); count += 1) {
-    const lines = makeLines(count);
-    const longest = Math.max(...lines.map(line => line.length), 1);
-    const widthLimit = (width * 0.82) / (longest * 0.58);
-    const codeReserve = room.code ? 1.05 : 0;
-    const heightLimit = (height * 0.68) / Math.max(1, lines.length * 1.14 + codeReserve);
-    const fontSize = Math.max(0.58, Math.min(1.45, widthLimit, heightLimit));
-
-    if (!best || fontSize > best.fontSize) best = { lines, fontSize };
-  }
-
-  const lineGap = Math.max(0.72, best.fontSize * 1.12);
-  const codeSize = Math.max(0.56, Math.min(1.02, best.fontSize * 0.82));
-  const showCode = !!room.code && height >= 2.6;
-
-  return {
-    ...best,
-    lineGap,
-    codeSize,
-    showCode
-  };
-}
-
 function enablePlanNavigation(container, svg, {
   allowRotation = false,
   nativeTouch = false,
@@ -559,7 +493,6 @@ export function renderPlan(container, buildingId, levelId, {
   svg.setAttribute('aria-label', `${PLAN_CONFIG[buildingId].label} — ${level.label} — ${zone.label}`);
   svg.classList.add('plan-svg');
   if (zone.planImage) svg.classList.add('plan-has-image');
-  const vectorPlan = String(zone.planImage || '').toLowerCase().includes('.svg');
 
   const scene = document.createElementNS(svgNs, 'g');
   scene.classList.add('plan-scene');
@@ -614,16 +547,13 @@ export function renderPlan(container, buildingId, levelId, {
     }
     shape.classList.add('plan-shape');
 
-    const layout = vectorPlan
-      ? buildCrispPlanLabelLayout(room, scaleY)
-      : buildRoomLabelLayout(room);
+    const layout = buildRoomLabelLayout(room);
     const label = document.createElementNS(svgNs, 'text');
     const centerX = room.x + room.w / 2;
     const centerY = (room.y + room.h / 2) * scaleY;
     label.setAttribute('x', centerX);
     label.setAttribute('text-anchor', 'middle');
     label.classList.add('room-label');
-    if (vectorPlan) label.classList.add('room-overlay-label');
     label.setAttribute('font-size', String(layout.fontSize));
 
     const labelBlockHeight = Math.max(0, (layout.lines.length - 1) * layout.lineGap);
@@ -643,7 +573,6 @@ export function renderPlan(container, buildingId, levelId, {
     code.setAttribute('y', String(centerY + labelBlockHeight / 2 + layout.lineGap * 0.82));
     code.setAttribute('text-anchor', 'middle');
     code.classList.add('room-code');
-    if (vectorPlan) code.classList.add('room-overlay-code');
     code.setAttribute('font-size', String(layout.codeSize));
     code.textContent = layout.showCode ? (room.code || '') : '';
 
@@ -680,8 +609,8 @@ export function renderPlan(container, buildingId, levelId, {
     });
 
     if (zone.planImage) {
+      // Le plan d'origine porte déjà les vrais noms et codes : ne rien réécrire par-dessus.
       group.append(shape);
-      if (vectorPlan) group.append(label, code);
     } else {
       group.append(shape, label, code);
     }
