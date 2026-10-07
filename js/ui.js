@@ -476,6 +476,7 @@ export function renderPlan(container, buildingId, levelId, {
   mode = 'public',
   anomalies = [],
   roomStatus = {},
+  statusColors = false,
   selectedRoomId = null,
   onRoomClick = () => {}
 } = {}) {
@@ -521,13 +522,22 @@ export function renderPlan(container, buildingId, levelId, {
     const scaleY = zone.coordinateScaleY || 1;
     const group = document.createElementNS(svgNs, 'g');
     group.classList.add('plan-room');
-    const activeFromStatus = roomStatus && Object.prototype.hasOwnProperty.call(roomStatus, room.id)
-      ? roomStatus[room.id] === true
-      : null;
-    const active = activeFromStatus === null
-      ? roomHasActiveAnomaly(room.id, anomalies)
-      : activeFromStatus;
-    group.classList.add(active ? 'room-red' : 'room-green');
+    if (statusColors) {
+      const roomAnomalies = anomalies.filter((a) => a.roomId === room.id);
+      let roomState = 'neutral';
+      if (roomAnomalies.some((a) => a.status === 'a_traiter')) roomState = 'red';
+      else if (roomAnomalies.some((a) => a.status === 'en_cours')) roomState = 'orange';
+      else if (roomAnomalies.some((a) => a.status === 'resolu')) roomState = 'green';
+      group.classList.add(`room-${roomState}`);
+    } else {
+      const activeFromStatus = roomStatus && Object.prototype.hasOwnProperty.call(roomStatus, room.id)
+        ? roomStatus[room.id] === true
+        : null;
+      const active = activeFromStatus === null
+        ? roomHasActiveAnomaly(room.id, anomalies)
+        : activeFromStatus;
+      group.classList.add(active ? 'room-red' : 'room-green');
+    }
     if (selectedRoomId === room.id) group.classList.add('room-selected');
     group.setAttribute('tabindex', '0');
     group.setAttribute('role', 'button');
