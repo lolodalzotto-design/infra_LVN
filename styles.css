@@ -288,10 +288,8 @@ body.plan-fullscreen-body { overflow:hidden; }
 .plan-legend-dot { width:9px;height:9px;border-radius:50%;display:inline-block; }
 .plan-legend-dot.ok { background:var(--green); }
 .plan-legend-dot.alert { background:var(--red); }
-.plan-legend-hint { margin-left:auto;font-weight:600; }
 @media (max-width:640px) {
   .plan-legend { gap:9px; }
-  .plan-legend-hint { width:100%;margin-left:0; }
 }
 
 
