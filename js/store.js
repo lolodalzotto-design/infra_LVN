@@ -198,6 +198,40 @@ export async function hasInfraSession() {
   return !!profile?.authorized;
 }
 
+export function subscribeCurrentInfraProfile(callback) {
+  if (APP_MODE === 'demo') {
+    callback({ ...ADMIN_BOOTSTRAP_PROFILE, fullName: fullName(ADMIN_BOOTSTRAP_PROFILE), authorized: true });
+    return () => {};
+  }
+
+  let unsubscribe = () => {};
+  getFirebase().then(async ({ auth, db, fsMod }) => {
+    await auth.authStateReady();
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) {
+      callback(null);
+      return;
+    }
+    unsubscribe = fsMod.onSnapshot(
+      fsMod.doc(db, 'users', user.uid),
+      (snap) => {
+        if (!snap.exists()) { callback(null); return; }
+        const profile = snap.data();
+        const authorized = profile.active === true && ['admin', 'infra'].includes(profile.role);
+        callback({
+          uid: user.uid,
+          ...profile,
+          fullName: fullName(profile) || user.displayName || normalizeEmail(user.email),
+          isAdmin: authorized && profile.role === 'admin',
+          authorized
+        });
+      },
+      () => callback(null)
+    );
+  });
+  return () => unsubscribe();
+}
+
 export async function sendInfraPasswordReset(email) {
   if (APP_MODE === 'demo') return;
   const { auth, authMod } = await getFirebase();
