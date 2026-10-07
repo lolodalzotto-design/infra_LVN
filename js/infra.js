@@ -264,7 +264,7 @@ function renderGlobalPlans(rows) {
       const planRows = rows.filter(a => roomIds.has(a.roomId));
 
       const fragment = document.createElement('div');
-      fragment.className = 'level-plan-fragment';
+      fragment.className = 'plan-canvas level-plan-fragment';
       composite.appendChild(fragment);
 
       renderPlan(fragment, entry.buildingId, entry.levelId, {
