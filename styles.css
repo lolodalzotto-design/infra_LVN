@@ -301,3 +301,19 @@ body.plan-fullscreen-body { overflow:hidden; }
 .plan-canvas.plan-vector-transparent .plan-svg {
   background:transparent !important;
 }
+
+.plan-navigable::backdrop {
+  background:#eef1f4;
+}
+
+.plan-navigable:fullscreen,
+.plan-navigable:-webkit-full-screen,
+.plan-fullscreen-fallback {
+  background:#eef1f4 !important;
+}
+
+.plan-navigable:fullscreen .plan-svg,
+.plan-navigable:-webkit-full-screen .plan-svg,
+.plan-fullscreen-fallback .plan-svg {
+  background:#eef1f4 !important;
+}
