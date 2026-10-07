@@ -1,6 +1,6 @@
 window.__infraLvnBoot = true;
 import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1550';
-import { renderPlan } from './ui.js?v=20261007-1550';
+import { renderPlan } from './ui.js?v=20261007-plan-quality-2';
 import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-1550';
 
 let selectedBuilding = null;
