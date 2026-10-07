@@ -1,4 +1,5 @@
 rules_version = '2';
+// Deployment managed by GitHub Actions.
 service firebase.storage {
   match /b/{bucket}/o {
     function signedIn() {
