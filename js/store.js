@@ -134,8 +134,25 @@ export async function getCurrentInfraUser({ bootstrapAdmin = true } = {}) {
   if (!user || user.isAnonymous) return null;
 
   const profileRef = fsMod.doc(db, 'users', user.uid);
-  let snap = await fsMod.getDoc(profileRef);
   const isBootstrapAdmin = normalizeEmail(user.email) === ADMIN_AUTH_EMAIL;
+  let snap;
+  try {
+    snap = await fsMod.getDoc(profileRef);
+  } catch (error) {
+    // Compatibilité pendant la migration : les anciennes règles ne connaissent
+    // pas encore /users. Le compte admin historique reste donc utilisable.
+    if (isBootstrapAdmin) {
+      return {
+        uid: user.uid,
+        ...ADMIN_BOOTSTRAP_PROFILE,
+        fullName: fullName(ADMIN_BOOTSTRAP_PROFILE),
+        isAdmin: true,
+        authorized: true,
+        migrationPending: true
+      };
+    }
+    throw error;
+  }
 
   if (!snap.exists() && bootstrapAdmin && isBootstrapAdmin) {
     const now = fsMod.serverTimestamp();
@@ -226,7 +243,20 @@ export function subscribeCurrentInfraProfile(callback) {
           authorized
         });
       },
-      () => callback(null)
+      () => {
+        if (normalizeEmail(user.email) === ADMIN_AUTH_EMAIL) {
+          callback({
+            uid: user.uid,
+            ...ADMIN_BOOTSTRAP_PROFILE,
+            fullName: fullName(ADMIN_BOOTSTRAP_PROFILE),
+            isAdmin: true,
+            authorized: true,
+            migrationPending: true
+          });
+        } else {
+          callback(null);
+        }
+      }
     );
   });
   return () => unsubscribe();
