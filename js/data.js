@@ -191,30 +191,34 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            rooms: layoutRooms([
-              room('B-RDC-CAS-B002', 'B002', 'Salle Crossfit'),
-              room('B-RDC-CAS-B003', 'B003', 'Magasin incendie'),
-              room('B-RDC-CAS-B003BIS', 'B003 bis', 'Bureau MI'),
-              room('B-RDC-CAS-B004', 'B004', 'Infra'),
-              room('B-RDC-CAS-B005', 'B005', 'Salle de sport'),
-              room('B-RDC-CAS-B006', 'B006', 'Salle TV'),
-              room('B-RDC-CAS-B007', 'B007', 'Circulation'),
-              room('B-RDC-CAS-B008', 'B008', 'Coopérative'),
-              room('B-RDC-CAS-B009', 'B009', 'Réserve Coop'),
-              room('B-RDC-CAS-B010', 'B010', 'Appro HCC'),
-              room('B-RDC-CAS-B011', 'B011', 'Local sous escalier')
-            ], 3)
+            viewBox: { width: 100, height: 72 },
+            rooms: [
+              { id:'B-RDC-CAS-B002', code:'B002', name:'Salle Crossfit', x:0.0, y:0.0, w:18.5, h:46.5 },
+              { id:'B-RDC-CAS-B003', code:'B003', name:'Magasin incendie', x:18.5, y:0.0, w:13.5, h:46.5 },
+              { id:'B-RDC-CAS-B003BIS', code:'B003 bis', name:'Bureau MI', x:18.5, y:46.5, w:13.5, h:25.5 },
+              { id:'B-RDC-CAS-B004', code:'B004', name:'Infra', x:32.0, y:0.0, w:13.2, h:33.5 },
+              { id:'B-RDC-CAS-B005', code:'B005', name:'Salle de sport', x:45.2, y:0.0, w:16.0, h:33.5 },
+              { id:'B-RDC-CAS-B010', code:'B010', name:'Appro HCC', x:32.0, y:33.5, w:13.2, h:38.5 },
+              { id:'B-RDC-CAS-B009', code:'B009', name:'Réserve Coop', x:45.2, y:38.0, w:16.0, h:34.0 },
+              { id:'B-RDC-CAS-B007', code:'B007', name:'Circulation', x:61.2, y:18.0, w:8.0, h:54.0 },
+              { id:'B-RDC-CAS-B006', code:'B006', name:'Salle TV', x:69.2, y:0.0, w:8.5, h:22.0 },
+              { id:'B-RDC-CAS-B011', code:'B011', name:'Local sous escalier', x:69.2, y:51.0, w:8.5, h:21.0 },
+              { id:'B-RDC-CAS-B008', code:'B008', name:'Coopérative', x:77.7, y:0.0, w:22.3, h:72.0, points:[[77.7,0],[100,0],[100,52],[92.0,72],[77.7,72]] }
+            ]
           },
           garage: {
             label: 'Garage',
-            rooms: layoutRooms([
-              room('B-RDC-GAR-B001-T1', 'B001-1', 'Travée 1'),
-              room('B-RDC-GAR-B001-T2', 'B001-2', 'Travée 2'),
-              room('B-RDC-GAR-B001-T3', 'B001-3', 'Travée 3'),
-              room('B-RDC-GAR-B001-T4', 'B001-4', 'Travée 4'),
-              room('B-RDC-GAR-B001-T5', 'B001-5', 'Travée 5'),
-              room('B-RDC-GAR-MEZZ', 'Mezz.', 'Mezzanine')
-            ], 3)
+            viewBox: { width: 100, height: 35 },
+            rooms: [
+              { id:'B-RDC-GAR-B001-T1', code:'B001', name:'Travée 1', x:0.0, y:0.0, w:18.0, h:35.0 },
+              { id:'B-RDC-GAR-B001-T2', code:'B001', name:'Travée 2', x:18.0, y:0.0, w:18.0, h:35.0 },
+              { id:'B-RDC-GAR-B001-T3', code:'B001', name:'Travée 3', x:36.0, y:0.0, w:18.0, h:35.0 },
+              { id:'B-RDC-GAR-B001-T4', code:'B001', name:'Travée 4', x:54.0, y:0.0, w:18.0, h:35.0 },
+              { id:'B-RDC-GAR-B001-T5', code:'B001', name:'Travée 5', x:72.0, y:0.0, w:14.0, h:16.0 },
+              { id:'B-RDC-GAR-MEZZ', code:'', name:'Mezzanine', x:72.0, y:16.0, w:14.0, h:19.0 },
+              { id:'B-RDC-GAR-CCFS', code:'', name:'CCFS', x:86.0, y:0.0, w:7.0, h:35.0 },
+              { id:'B-RDC-GAR-VRCG3', code:'', name:'VRCG3 / CDF', x:93.0, y:0.0, w:7.0, h:35.0 }
+            ]
           }
         }
       },
@@ -223,17 +227,19 @@ export const PLAN_CONFIG = {
         zones: {
           caserne: {
             label: 'Caserne',
-            rooms: layoutRooms([
-              room('B-R1-B101', 'B101', 'Poste OM'),
-              room('B-R1-B102', 'B102', 'HCC'),
-              room('B-R1-B103', 'B103', 'WC femmes'),
-              room('B-R1-B104', 'B104', 'WC hommes'),
-              room('B-R1-B105', 'B105', 'Salon de coiffure'),
-              room('B-R1-B106', 'B106', 'Buanderie'),
-              room('B-R1-B107', 'B107', 'Bureau sport GPTS'),
-              room('B-R1-B108', 'B108', 'Salle cardio'),
-              room('B-R1-B109', 'B109', 'Salle musculation')
-            ], 3)
+            viewBox: { width: 100, height: 30 },
+            rooms: [
+              { id:'B-R1-B109', code:'B109', name:'Salle musculation', x:0.0, y:0.0, w:39.5, h:15.8 },
+              { id:'B-R1-B108', code:'B108', name:'Salle cardio', x:41.6, y:0.0, w:16.5, h:15.8 },
+              { id:'B-R1-B102', code:'B102', name:'HCC', x:58.1, y:0.0, w:21.2, h:15.8 },
+              { id:'B-R1-B101', code:'B101', name:'Poste OM', x:79.3, y:0.0, w:20.7, h:30.0 },
+              { id:'B-R1-B107', code:'B107', name:'Bureau sport GPTS', x:0.0, y:15.8, w:18.8, h:14.2 },
+              { id:'B-R1-B106', code:'B106', name:'Buanderie', x:18.8, y:15.8, w:13.9, h:14.2 },
+              { id:'B-R1-B105', code:'B105', name:'Salon de coiffure', x:32.7, y:15.8, w:13.6, h:14.2 },
+              { id:'B-R1-B104', code:'B104', name:'WC hommes', x:46.3, y:15.8, w:8.7, h:14.2 },
+              { id:'B-R1-B103', code:'B103', name:'WC femmes', x:55.0, y:15.8, w:7.9, h:14.2 },
+              { id:'B-R1-ESC', code:'', name:'Escalier', x:62.9, y:15.8, w:16.4, h:14.2 }
+            ]
           }
         }
       }
