@@ -60,12 +60,7 @@ function renderLevelButtons() {
       selectedLevel = button.dataset.level;
       selectedZone = Object.keys(currentLevel()?.zones || {})[0] || 'caserne';
       resetRoomSelection();
-      subscribeRoomStatus((status) => {
-  roomStatus = status || {};
-  renderCurrentPlan();
-});
-
-renderSelectorsAndPlan();
+      renderSelectorsAndPlan();
     });
   });
 }
@@ -216,6 +211,11 @@ els.form.addEventListener('submit', async (event) => {
     els.submit.disabled = false;
     els.submit.textContent = 'Soumettre le signalement';
   }
+});
+
+subscribeRoomStatus((status) => {
+  roomStatus = status || {};
+  renderCurrentPlan();
 });
 
 renderSelectorsAndPlan();
