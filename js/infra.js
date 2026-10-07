@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-bell-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-bell-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-onboarding-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-onboarding-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-bell-1';
+} from './store.js?v=20261007-onboarding-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -14,6 +14,7 @@ import {
 const INFRA_OPERATOR = 'infra_lvn';
 const INFRA_AUTH_EMAIL = 'lolo.dalzotto@gmail.com';
 const LOGIN_ERROR = 'Identifiant ou mot de passe incorrect.';
+const INFRA_APP_URL = new URL('./infra.html', window.location.href).href;
 
 let anomalies = [];
 let unsubscribe = null;
@@ -27,6 +28,7 @@ const els = {
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
   forgotPassword: $('#forgot-password-btn'), changePassword: $('#change-password-btn'),
   manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
+  installApp: $('#install-app-btn'),
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
   notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
@@ -41,6 +43,107 @@ const els = {
 function toast(message) {
   const node = document.createElement('div'); node.className = 'toast'; node.textContent = message; document.body.appendChild(node);
   setTimeout(() => node.remove(), 3200);
+}
+
+function installGuideStorageKey() {
+  return `infra_lvn_install_guide_seen_${currentUser?.uid || 'member'}`;
+}
+
+function markInstallGuideSeen() {
+  try { localStorage.setItem(installGuideStorageKey(), '1'); } catch {}
+}
+
+function hasSeenInstallGuide() {
+  try { return localStorage.getItem(installGuideStorageKey()) === '1'; } catch { return false; }
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  }
+}
+
+function openInstallGuide() {
+  markInstallGuideSeen();
+  modal(`<div class="modal-head"><div><h2>Ajouter Infra LVN à l’écran d’accueil</h2><div class="help">Pour ouvrir l’outil comme une application depuis votre téléphone.</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="install-guide">
+      <div class="install-guide-card">
+        <strong>Android — Chrome</strong>
+        <span>1. Ouvrez le menu ⋮</span>
+        <span>2. Choisissez « Ajouter à l’écran d’accueil » ou « Installer l’application »</span>
+        <span>3. Validez avec « Ajouter »</span>
+      </div>
+      <div class="install-guide-card">
+        <strong>iPhone — Safari</strong>
+        <span>1. Touchez le bouton Partager</span>
+        <span>2. Choisissez « Sur l’écran d’accueil »</span>
+        <span>3. Touchez « Ajouter »</span>
+      </div>
+    </div>
+    <div class="submit-row"><button type="button" class="primary" data-close>J’ai compris</button></div>`);
+}
+
+function maybeShowMemberInstallGuide() {
+  if (!currentUser || currentUser.isAdmin || hasSeenInstallGuide()) return;
+  setTimeout(() => {
+    if (currentUser && !currentUser.isAdmin && !hasSeenInstallGuide()) openInstallGuide();
+  }, 250);
+}
+
+function openNewUserWelcomeModal(created, email, initialPassword) {
+  const fullName = created?.fullName || 'Membre Infrastructure';
+  const instructions = `INFRA LVN
+
+Lien de connexion :
+${INFRA_APP_URL}
+
+Identifiant :
+${email}
+
+Mot de passe initial :
+${initialPassword}
+
+À la première connexion :
+1. Ouvrir le lien Infra.
+2. Se connecter avec l’adresse e-mail et le mot de passe initial.
+3. Le mot de passe peut ensuite être modifié depuis le menu ☰.
+4. Suivre la procédure proposée pour ajouter Infra LVN à l’écran d’accueil du téléphone.`;
+
+  modal(`<div class="modal-head"><div><h2>Compte créé</h2><div class="help">${escapeHtml(fullName)}</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="onboarding-summary">
+      <div class="onboarding-row"><span>Lien Infra</span><strong>${escapeHtml(INFRA_APP_URL)}</strong></div>
+      <div class="onboarding-row"><span>Adresse e-mail</span><strong>${escapeHtml(email)}</strong></div>
+      <div class="onboarding-row"><span>Mot de passe initial</span><strong>${escapeHtml(initialPassword)}</strong></div>
+    </div>
+    <div class="install-guide">
+      <div class="install-guide-card">
+        <strong>Procédure à transmettre</strong>
+        <span>1. Ouvrir le lien Infra</span>
+        <span>2. Se connecter avec l’adresse e-mail et le mot de passe initial</span>
+        <span>3. Modifier le mot de passe si souhaité</span>
+        <span>4. Ajouter l’application à l’écran d’accueil quand la procédure s’affiche</span>
+      </div>
+    </div>
+    <div class="submit-row">
+      <button id="copy-onboarding-btn" class="secondary" type="button">Copier les instructions</button>
+      <button class="primary" type="button" data-close>Terminer</button>
+    </div>`);
+
+  $('#copy-onboarding-btn').addEventListener('click', async () => {
+    const ok = await copyText(instructions);
+    toast(ok ? 'Instructions copiées.' : 'Copie impossible.');
+  });
 }
 
 function setTopMenu(open) {
@@ -156,7 +259,8 @@ async function openShell(profile = null) {
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
   els.notificationButton.classList.toggle('hidden', !currentUser.isAdmin);
-  document.querySelectorAll('.admin-overview').forEach(node => node.classList.toggle('hidden', !currentUser.isAdmin));
+  document.querySelectorAll('.admin-overview').forEach(node => node.classList.remove('hidden'));
+  maybeShowMemberInstallGuide();
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => {
     anomalies = rows;
     updateAdminNotifications(rows);
@@ -516,15 +620,16 @@ async function openUsersModal() {
       const button = e.currentTarget.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
+        const email = String(fd.get('email') || '').trim();
+        const initialPassword = String(fd.get('initialPassword') || '');
         const created = await createInfraUser({
           firstName: String(fd.get('firstName') || '').trim(),
           lastName: String(fd.get('lastName') || '').trim(),
-          email: String(fd.get('email') || '').trim(),
-          initialPassword: String(fd.get('initialPassword') || '')
+          email,
+          initialPassword
         });
-        toast(`Compte de ${created.fullName} créé avec son mot de passe initial.`);
-        closeModal();
-        await openUsersModal();
+        toast(`Compte de ${created.fullName} créé.`);
+        openNewUserWelcomeModal(created, email, initialPassword);
       } catch (err) {
         button.disabled = false;
         const message = err?.code === 'auth/email-already-in-use' ? 'Cette adresse e-mail possède déjà un compte.' : (err.message || 'Création impossible.');
@@ -662,6 +767,7 @@ async function init() {
 
   els.forgotPassword.addEventListener('click', openForgotPasswordModal);
   els.changePassword.addEventListener('click', () => { closeTopMenu(); openChangePasswordModal(); });
+  els.installApp.addEventListener('click', () => { closeTopMenu(); openInstallGuide(); });
   els.manageUsers.addEventListener('click', () => { closeTopMenu(); openUsersModal(); });
   els.logout.addEventListener('click', async () => { closeTopMenu(); await logoutInfra(); closeShell(); });
   els.notificationButton.addEventListener('click', (event) => {
