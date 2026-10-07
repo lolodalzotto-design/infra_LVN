@@ -239,6 +239,44 @@ body.plan-fullscreen-body { overflow:hidden; }
 .plan-has-image .room-label,
 .plan-has-image .room-code { display:none !important; }
 
+/* Rendu lisible des plans convertis depuis le PDF.
+   Le plan A / RDC / Caserne n'utilise pas cette couche et reste inchangé. */
+.plan-has-image.plan-readable-overlay .room-label,
+.plan-has-image.plan-readable-overlay .room-code {
+  display:block !important;
+  pointer-events:none;
+  font-family:Arial, Helvetica, sans-serif;
+  text-rendering:geometricPrecision;
+  paint-order:stroke fill;
+  stroke:#fff;
+  stroke-linejoin:round;
+}
+
+.plan-has-image.plan-readable-overlay .room-label {
+  fill:#050505;
+  font-weight:850;
+  letter-spacing:-.015em;
+  stroke-width:.10;
+}
+
+.plan-has-image.plan-readable-overlay .room-code {
+  fill:#991b1b;
+  font-weight:900;
+  stroke-width:.09;
+}
+
+.plan-has-image.plan-readable-overlay .room-label-plate {
+  fill:rgba(255,255,255,.91);
+  stroke:rgba(13,34,58,.10);
+  stroke-width:.20;
+  vector-effect:non-scaling-stroke;
+  pointer-events:none;
+}
+
+.plan-has-image.plan-readable-overlay .plan-room.room-red .room-label-plate {
+  fill:rgba(255,251,251,.94);
+}
+
 .plan-has-image .plan-room .plan-shape {
   vector-effect:non-scaling-stroke;
   stroke-width:.7;
