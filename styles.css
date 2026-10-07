@@ -45,14 +45,14 @@ main { max-width:1180px;margin:0 auto;padding:22px 16px 64px; }
 .plan-svg { width:100%;height:100%;display:block; }
 .plan-shell { fill:#fff;stroke:#9ea9b6;stroke-width:.45; }
 .plan-room { cursor:pointer; outline:none; }
-.plan-room rect { stroke-width:1.65; transition:.15s ease; vector-effect:non-scaling-stroke; }
-.plan-room.room-neutral rect { fill:#fff;stroke:#98a5b3; }
-.plan-room.room-green rect { fill:var(--green-soft);stroke:var(--green); }
-.plan-room.room-red rect { fill:var(--red-soft);stroke:var(--red); }
-.plan-room:hover rect, .plan-room:focus rect { filter:brightness(.92);stroke-width:1.65; }
-.plan-room.room-selected rect { stroke-width:2.6; }
-.plan-room.room-green.room-selected rect { fill:var(--green);stroke:var(--green); }
-.plan-room.room-red.room-selected rect { fill:var(--red);stroke:var(--red); }
+.plan-room .plan-shape { stroke-width:1.65; transition:.15s ease; vector-effect:non-scaling-stroke; }
+.plan-room.room-neutral .plan-shape { fill:#fff;stroke:#98a5b3; }
+.plan-room.room-green .plan-shape { fill:var(--green-soft);stroke:var(--green); }
+.plan-room.room-red .plan-shape { fill:var(--red-soft);stroke:var(--red); }
+.plan-room:hover .plan-shape, .plan-room:focus .plan-shape { filter:brightness(.92);stroke-width:1.65; }
+.plan-room.room-selected .plan-shape { stroke-width:2.6; }
+.plan-room.room-green.room-selected .plan-shape { fill:var(--green);stroke:var(--green); }
+.plan-room.room-red.room-selected .plan-shape { fill:var(--red);stroke:var(--red); }
 .plan-room.room-selected .room-label,
 .plan-room.room-selected .room-code { fill:#fff; }
 .room-label { pointer-events:none;fill:var(--text);font-weight:800;font-size:3.2px; }
@@ -147,7 +147,7 @@ footer { text-align:center;color:#7a8796;font-size:.72rem;padding:28px 16px 40px
 .incident-room-zoom-title { font-size:.78rem;font-weight:900;color:var(--muted);margin-bottom:7px; }
 .incident-room-zoom { height:220px;background:#eef1f4;border:1px solid var(--line);border-radius:14px;overflow:hidden; }
 .incident-room-zoom .plan-svg { width:100%;height:100%; }
-.incident-room-zoom .room-selected rect { fill:rgba(20,70,110,.30);stroke:var(--navy);stroke-width:2.3; }
+.incident-room-zoom .room-selected .plan-shape { fill:rgba(20,70,110,.30);stroke:var(--navy);stroke-width:2.3; }
 
 .dashboard-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:4px 0 22px; }
 .dashboard-heading h1 { margin:0;font-size:clamp(2rem,5vw,3.4rem);line-height:1;font-weight:950;letter-spacing:-.035em;color:var(--navy); }
