@@ -162,7 +162,39 @@ export async function createAnomaly(payload, photoFile = null) {
     createdAt: fsMod.serverTimestamp(),
     updatedAt: fsMod.serverTimestamp()
   });
+  await setRoomStatus(payload.roomId, true);
   return { id: docRef.id, ...record, photoUrl };
+}
+
+export function subscribeRoomStatus(callback) {
+  if (APP_MODE === 'demo') {
+    callback({});
+    return () => {};
+  }
+
+  let unsub = () => {};
+  getFirebase().then(({ db, fsMod }) => {
+    unsub = fsMod.onSnapshot(
+      fsMod.collection(db, 'room_status'),
+      (snap) => {
+        const status = {};
+        snap.docs.forEach((d) => { status[d.id] = d.data()?.active === true; });
+        callback(status);
+      },
+      () => callback({})
+    );
+  });
+  return () => unsub();
+}
+
+async function setRoomStatus(roomId, active) {
+  if (!roomId || APP_MODE === 'demo') return;
+  const { db, fsMod } = await getFirebase();
+  await fsMod.setDoc(
+    fsMod.doc(db, 'room_status', roomId),
+    { active: !!active, updatedAt: fsMod.serverTimestamp() },
+    { merge: true }
+  );
 }
 
 export function subscribeAnomalies(callback) {
@@ -195,7 +227,7 @@ export function subscribeAnomalies(callback) {
   return () => unsub();
 }
 
-export async function updateAnomaly(id, patch, { actor = 'infra_lvn', actionLabel = 'Anomalie modifiée', resolutionPhotoFile = null } = {}) {
+export async function updateAnomaly(id, patch, { actor = 'infra_lvn', actionLabel = 'Anomalie modifiée', resolutionPhotoFile = null, roomId = null, roomActive = null } = {}) {
   const at = isoNow();
   const historyEvent = { type: patch.status ? 'status' : 'update', label: actionLabel, at, actor };
 
@@ -221,9 +253,10 @@ export async function updateAnomaly(id, patch, { actor = 'infra_lvn', actionLabe
   if (patch.status === 'resolu') finalPatch.resolvedAt = fsMod.serverTimestamp();
   if (patch.status && patch.status !== 'resolu') finalPatch.resolvedAt = null;
   await fsMod.updateDoc(fsMod.doc(db, 'anomalies', id), finalPatch);
+  if (roomId && typeof roomActive === 'boolean') await setRoomStatus(roomId, roomActive);
 }
 
-export async function deleteAnomaly(id, actor = 'infra_lvn') {
+export async function deleteAnomaly(id, actor = 'infra_lvn', { roomId = null, roomActive = null } = {}) {
   if (APP_MODE === 'demo') {
     setDemoData(getDemoData().filter((x) => x.id !== id));
     return;
@@ -231,6 +264,7 @@ export async function deleteAnomaly(id, actor = 'infra_lvn') {
   const { db, fsMod } = await getFirebase();
   // Suppression réservée aux erreurs manifestes. En production, préférer un archivage logique.
   await fsMod.deleteDoc(fsMod.doc(db, 'anomalies', id));
+  if (roomId && typeof roomActive === 'boolean') await setRoomStatus(roomId, roomActive);
 }
 
 export function resetDemoData() {
