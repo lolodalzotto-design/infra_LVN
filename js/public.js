@@ -1,6 +1,6 @@
 window.__infraLvnBoot = true;
-import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1300';
-import { renderPlan } from './ui.js?v=20261007-1300';
+import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-1335';
+import { renderPlan } from './ui.js?v=20261007-1335';
 import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-1300';
 
 let selectedBuilding = 'A';
@@ -100,7 +100,7 @@ function renderCurrentPlan() {
 
   const card = document.createElement('article');
   card.className = 'plan-card';
-  const rotationTest = selectedBuilding === 'A' && selectedLevel === 'RDC' && selectedZone === 'caserne';
+  const vectorPlan = String(zone.planImage || '').includes('.svg');
   card.innerHTML = `
     <h3>
       <span>${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''}</span>
@@ -108,17 +108,17 @@ function renderCurrentPlan() {
     <div class="plan-legend" aria-label="Légende du plan">
       <span class="plan-legend-item"><i class="plan-legend-dot ok"></i>OK</span>
       <span class="plan-legend-item"><i class="plan-legend-dot alert"></i>Anomalie</span>
-      <span class="plan-legend-hint">${rotationTest ? '1 doigt : déplacer • 2 doigts : zoom + rotation' : 'Touchez une pièce • pincez pour zoomer'}</span>
+      <span class="plan-legend-hint">${vectorPlan ? '1 doigt : déplacer • 2 doigts : zoom + rotation' : 'Touchez une pièce • pincez pour zoomer'}</span>
     </div>
     <div class="plan-canvas"></div>
   `;
 
   const canvas = card.querySelector('.plan-canvas');
   const vb = zone.viewBox || { width: 100, height: 100 };
-  const gestureTest = selectedBuilding === 'A' && selectedLevel === 'RDC' && selectedZone === 'caserne';
+  const vectorPlanActive = String(zone.planImage || '').includes('.svg');
   canvas.style.aspectRatio = `${vb.width} / ${vb.height}`;
   canvas.style.minHeight = '0';
-  canvas.classList.toggle('plan-vector-transparent', gestureTest);
+  canvas.classList.toggle('plan-vector-transparent', vectorPlanActive);
 
   renderPlan(canvas, selectedBuilding, selectedLevel, {
     zoneId: selectedZone,
