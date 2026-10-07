@@ -1,4 +1,4 @@
-import { PLAN_CONFIG } from './data.js?v=20261007-1300';
+import { PLAN_CONFIG } from './data.js?v=20261007-1335';
 
 export const STATUS_LABELS = {
   a_traiter: 'À traiter',
@@ -515,7 +515,7 @@ export function renderPlan(container, buildingId, levelId, {
   outer.setAttribute('rx', '2'); outer.classList.add('plan-shell');
   if (!zone.planImage) scene.appendChild(outer);
 
-  const gestureTest = buildingId === 'A' && levelId === 'RDC' && resolvedZoneId === 'caserne';
+  const gestureEnabled = String(zone.planImage || '').includes('.svg');
 
   zone.rooms.forEach((room) => {
     const scaleY = zone.coordinateScaleY || 1;
@@ -582,7 +582,7 @@ export function renderPlan(container, buildingId, levelId, {
     };
 
     let touchTapStart = null;
-    if (gestureTest) {
+    if (gestureEnabled) {
       group.addEventListener('pointerdown', (event) => {
         if (event.pointerType !== 'touch') return;
         touchTapStart = { x: event.clientX, y: event.clientY };
@@ -619,10 +619,10 @@ export function renderPlan(container, buildingId, levelId, {
 
   container.replaceChildren(svg);
   enablePlanNavigation(container, svg, {
-    allowRotation: gestureTest,
-    nativeTouch: gestureTest,
+    allowRotation: gestureEnabled,
+    nativeTouch: gestureEnabled,
     initialZoom: 1,
-    exactFit: gestureTest
+    exactFit: gestureEnabled
   });
 }
 
