@@ -26,7 +26,7 @@ export const PLAN_CONFIG = {
             label: 'Caserne',
             viewBox: { width: 100, height: 40 },
             coordinateScaleY: 1,
-            planImage: './assets/plans/A-RDC-caserne.webp?v=20261007-1030',
+            planImage: './assets/plans/A-RDC-caserne.svg?v=20261007-1140',
             rooms: [
               { id:'A-RDC-CAS-ENT10', code:'', name:'Entrée BAT 10', x:6.52, y:5.42, w:5.55, h:13.35 },
               { id:'A-RDC-CAS-MEA', code:'', name:'MEA', x:0.20, y:18.90, w:6.10, h:3.16 },
