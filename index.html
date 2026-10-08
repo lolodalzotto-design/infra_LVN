@@ -81,16 +81,34 @@
 
   <footer>Infra-LVN • Remontée d'information</footer>
   <script>
+    // Le premier choix reste fonctionnel même pendant le chargement des modules.
     window.__infraLvnBoot = false;
+    document.querySelectorAll('[data-report-type]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-report-type]').forEach((b) =>
+          b.classList.toggle('active', b === button));
+        document.getElementById('location-flow').classList.remove('hidden');
+      });
+    });
+    window.addEventListener('error', (event) => {
+      if (window.__infraLvnBoot) return;
+      const box = document.getElementById('load-error');
+      if (box) box.textContent = 'Erreur de chargement : ' + (event.message || 'module indisponible') + '. Rechargez la page.';
+    });
     setTimeout(() => {
       if (!window.__infraLvnBoot) {
-        const box = document.createElement('div');
-        box.className = 'boot-error';
-        box.textContent = 'Erreur de chargement de l’application. Rechargez la page.';
-        document.body.prepend(box);
+        const box = document.getElementById('load-error');
+        if (box && !box.textContent) box.textContent = 'Le module de navigation ne s’est pas chargé. Rechargez la page.';
       }
-    }, 4500);
+    }, 5000);
   </script>
-  <script type="module" src="./js/public.js?v=20261008-hcc-2"></script>
+  <div id="load-error" role="alert" style="color:#a00;font-weight:700;padding:0 16px"></div>
+  <script type="module">
+    import('./js/public.js?v=20261008-hcc-3').catch((error) => {
+      console.error('Erreur de démarrage Infra-LVN', error);
+      document.getElementById('load-error').textContent =
+        'Erreur de démarrage : ' + (error?.message || 'chargement impossible') + '. Rechargez la page.';
+    });
+  </script>
 </body>
 </html>
