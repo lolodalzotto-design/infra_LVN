@@ -5,7 +5,7 @@ import {
   changeInfraPassword, listSectorUsers, createSectorUser,
   setSectorUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261008-infra-room-tap-3';
+} from './store.js?v=20261008-auth-usernames-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
