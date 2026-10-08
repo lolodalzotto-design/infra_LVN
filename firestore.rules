@@ -96,6 +96,31 @@ service cloud.firestore {
         && request.resource.data.resolutionPhotoUrl == null;
     }
 
+    function validPublicHccRequest() {
+      return request.resource.data.keys().hasOnly([
+          'roomId', 'roomName', 'buildingId', 'levelId', 'zoneId',
+          'reporterFirstName', 'reporterLastName', 'description',
+          'requestType', 'source', 'status', 'createdAt', 'updatedAt', 'photoUrl'
+        ])
+        && request.resource.data.source == 'public'
+        && request.resource.data.status == 'a_traiter'
+        && request.resource.data.requestType in ['approvisionnement', 'remplacement']
+        && request.resource.data.roomId is string
+        && request.resource.data.roomName is string
+        && request.resource.data.buildingId in ['A', 'B']
+        && request.resource.data.levelId in ['RDC', 'R1', 'R2']
+        && request.resource.data.zoneId is string
+        && request.resource.data.reporterFirstName is string
+        && request.resource.data.reporterFirstName.size() > 0
+        && request.resource.data.reporterFirstName.size() <= 60
+        && request.resource.data.reporterLastName is string
+        && request.resource.data.reporterLastName.size() > 0
+        && request.resource.data.reporterLastName.size() <= 60
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 240;
+    }
+
     match /users/{uid} {
       // Un membre peut lire son propre profil. L'administrateur voit tous
       // les membres afin de gérer les autorisations.
@@ -138,6 +163,11 @@ service cloud.firestore {
         ) || isInfra();
 
       allow delete: if isInfra();
+    }
+
+    match /hcc_requests/{requestId} {
+      allow create: if isAnonymous() && validPublicHccRequest();
+      allow read, update, delete: if isInfra();
     }
 
     match /anomalies/{anomalyId} {
