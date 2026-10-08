@@ -234,11 +234,14 @@ function enablePlanNavigation(container, svg, {
   });
 
   const fullscreenBtn = controls.querySelector('[data-plan-fullscreen]');
+  const isPlanFullscreen = () =>
+    document.fullscreenElement === container ||
+    document.webkitFullscreenElement === container ||
+    container.classList.contains('plan-fullscreen-fallback');
+
   const syncFullscreenButton = () => {
-    const active =
-      document.fullscreenElement === container ||
-      document.webkitFullscreenElement === container ||
-      container.classList.contains('plan-fullscreen-fallback');
+    const active = isPlanFullscreen();
+    container.classList.toggle('plan-gesture-active', active);
     fullscreenBtn.textContent = active ? '✕' : '⛶';
     fullscreenBtn.setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Plein écran');
     fullscreenBtn.setAttribute('title', active ? 'Quitter le plein écran' : 'Plein écran');
@@ -271,6 +274,7 @@ function enablePlanNavigation(container, svg, {
   document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
   svg.addEventListener('wheel', (event) => {
+    if (!isPlanFullscreen()) return;
     event.preventDefault();
     zoomAt(event.deltaY < 0 ? 0.82 : 1.22, event.clientX, event.clientY);
   }, { passive: false });
@@ -278,7 +282,7 @@ function enablePlanNavigation(container, svg, {
   // Souris / stylet. Sur mobile tactile, le gestionnaire TouchEvent ci-dessous
   // prend la main afin d'avoir un vrai pinch + rotation à deux doigts.
   svg.addEventListener('pointerdown', (event) => {
-    if (nativeTouch && event.pointerType === 'touch') return;
+    if (!isPlanFullscreen() || (nativeTouch && event.pointerType === 'touch')) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     svg.setPointerCapture?.(event.pointerId);
     moved = false;
@@ -294,7 +298,7 @@ function enablePlanNavigation(container, svg, {
   });
 
   svg.addEventListener('pointermove', (event) => {
-    if (nativeTouch && event.pointerType === 'touch') return;
+    if (!isPlanFullscreen() || (nativeTouch && event.pointerType === 'touch')) return;
     const previous = pointers.get(event.pointerId);
     if (!previous) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -329,7 +333,7 @@ function enablePlanNavigation(container, svg, {
   });
 
   const finishPointer = (event) => {
-    if (nativeTouch && event.pointerType === 'touch') return;
+    if (!isPlanFullscreen() || (nativeTouch && event.pointerType === 'touch')) return;
     pointers.delete(event.pointerId);
     try { svg.releasePointerCapture?.(event.pointerId); } catch {}
     if (moved) svg.__suppressRoomClickUntil = Date.now() + 300;
@@ -350,6 +354,14 @@ function enablePlanNavigation(container, svg, {
     };
 
     svg.addEventListener('touchstart', (event) => {
+      if (!isPlanFullscreen()) {
+        touchGestureActive = false;
+        singleTouchStart = null;
+        singleTouchLast = null;
+        singleTouchPanActive = false;
+        resetTouchGesture();
+        return;
+      }
       if (event.touches.length >= 2) {
         event.preventDefault();
         touchGestureActive = true;
@@ -376,6 +388,7 @@ function enablePlanNavigation(container, svg, {
     }, { passive: false });
 
     svg.addEventListener('touchmove', (event) => {
+      if (!isPlanFullscreen()) return;
       if (event.touches.length === 1 && singleTouchStart && singleTouchLast) {
         const t = event.touches[0];
         const current = { x: t.clientX, y: t.clientY };
@@ -469,6 +482,7 @@ function enablePlanNavigation(container, svg, {
   container.classList.toggle('plan-rotation-enabled', allowRotation);
   container.appendChild(controls);
   applyView();
+  syncFullscreenButton();
 }
 
 export function renderPlan(container, buildingId, levelId, {
