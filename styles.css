@@ -610,7 +610,7 @@ body.plan-fullscreen-body { overflow:hidden; }
   box-sizing:border-box;
   min-height:64px;
   gap:14px;
-  margin:0 0 22px;
+  margin:-22px -16px 22px;
   padding:10px 14px;
   background:rgba(13,34,58,.97);
   color:#fff;
@@ -739,7 +739,7 @@ body.plan-fullscreen-body { overflow:hidden; }
     flex-wrap:wrap;
   }
   .infra-topbar {
-    margin:0 -12px 18px;
+    margin:-16px -12px 18px;
     border-radius:0;
     padding:9px 12px;
   }
