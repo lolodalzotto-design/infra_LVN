@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261007-no-filters-1';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261007-no-filters-1';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-admin-period-topbar-1';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261008-admin-period-topbar-1';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261007-no-filters-1';
+} from './store.js?v=20261008-admin-period-topbar-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -32,6 +32,7 @@ const els = {
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
   notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
   list: $('#anomaly-list'), listCount: $('#list-count'),
+  kpiPeriodWrap: $('#kpi-period-wrap'), kpiPeriod: $('#kpi-period'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   planBuilding: $('#plan-building'), planLevel: $('#plan-level'), planZone: $('#plan-zone'), planZoneField: $('#plan-zone-field'),
   selectedPlan: $('#selected-plan'), planTitle: $('#plan-title'), planAnomalyCount: $('#plan-anomaly-count'),
@@ -258,6 +259,7 @@ async function openShell(profile = null) {
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
   els.notificationButton.classList.toggle('hidden', !currentUser.isAdmin);
+  els.kpiPeriodWrap.classList.toggle('hidden', !currentUser.isAdmin);
   document.querySelectorAll('.admin-overview').forEach(node => node.classList.remove('hidden'));
   maybeShowMemberInstallGuide();
   if (!unsubscribe) unsubscribe = subscribeAnomalies((rows) => {
@@ -281,6 +283,7 @@ function closeShell() {
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
   els.manageUsers.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
   newAdminAnomalies = []; els.currentUser.textContent = ''; closeTopMenu();
+  els.kpiPeriod.value = 'all';
   unsubscribe?.(); unsubscribe = null;
   profileUnsubscribe?.(); profileUnsubscribe = null;
 }
@@ -297,6 +300,31 @@ function renderKpis(rows = filteredAnomalies()) {
 
 function filteredAnomalies() {
   return anomalies;
+}
+
+function filteredKpiAnomalies(rows = anomalies) {
+  const period = els.kpiPeriod.value;
+  if (period === 'all') return rows;
+
+  const now = new Date();
+  const cutoff = new Date(now);
+  if (period === 'week') cutoff.setDate(cutoff.getDate() - 7);
+  else {
+    const months = { month: 1, '3months': 3, '6months': 6, year: 12 }[period];
+    if (!months) return rows;
+    const day = cutoff.getDate();
+    cutoff.setDate(1);
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const lastDay = new Date(cutoff.getFullYear(), cutoff.getMonth() + 1, 0).getDate();
+    cutoff.setDate(Math.min(day, lastDay));
+  }
+
+  const from = cutoff.getTime();
+  const to = now.getTime();
+  return rows.filter(anomaly => {
+    const createdAt = anomalyCreatedMs(anomaly.createdAt);
+    return createdAt >= from && createdAt <= to;
+  });
 }
 
 function anomalyAgeDays(value) {
@@ -449,7 +477,7 @@ function renderList(rows = filteredAnomalies()) {
 
 function renderAll() {
   const rows = filteredAnomalies();
-  renderKpis(rows);
+  renderKpis(filteredKpiAnomalies(rows));
   if (currentUser?.isAdmin) {
     renderPriorityPanels(rows);
     renderPlanVisualizer();
@@ -773,6 +801,7 @@ async function init() {
   els.planBuilding.addEventListener('change', refreshPlanLevelOptions);
   els.planLevel.addEventListener('change', refreshPlanZoneOptions);
   els.planZone.addEventListener('change', renderPlanVisualizer);
+  els.kpiPeriod.addEventListener('change', () => renderKpis(filteredKpiAnomalies(filteredAnomalies())));
 
   if (demo) {
     window.addEventListener('keydown', e => {
