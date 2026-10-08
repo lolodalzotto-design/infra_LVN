@@ -532,7 +532,7 @@ function buildActionLabel(anomaly, formData, nextStatus) {
   if (nextStatus !== anomaly.status) changes.push(`Statut : ${statusLabel(anomaly.status)} → ${statusLabel(nextStatus)}`);
   if (String(formData.get('category') || '') !== String(anomaly.category || '')) changes.push('Catégorie modifiée');
   if (String(formData.get('description') || '').trim() !== String(anomaly.description || '').trim()) changes.push('Description modifiée');
-  if (String(formData.get('bebNumber') || '').trim() !== String(anomaly.bebNumber || '').trim()) changes.push('N° BEB modifié');
+  if (String(formData.get('ebNumber') || '').trim() !== String(anomaly.ebNumber || '').trim()) changes.push('N° EB modifié');
   if (String(formData.get('fdiNumber') || '').trim() !== String(anomaly.fdiNumber || '').trim()) changes.push('N° FDI modifié');
   if ((formData.get('urgent') === 'on') !== !!anomaly.urgent) changes.push('Niveau d’urgence modifié');
   if (String(formData.get('resolutionComment') || '').trim() !== String(anomaly.resolutionComment || '').trim()) changes.push('Commentaire de suivi modifié');
@@ -700,7 +700,7 @@ function openAnomalyModal(id) {
       <div class="field"><label>Statut</label><select name="status"><option value="a_traiter" ${a.status==='a_traiter'?'selected':''}>À traiter</option><option value="en_cours" ${a.status==='en_cours'?'selected':''}>En cours</option><option value="resolu" ${a.status==='resolu'?'selected':''}>Résolu</option></select></div>
       <div class="field"><label>Catégorie</label><select name="category">${CATEGORIES.map(c=>`<option ${a.category===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select></div>
       <div class="field full"><label>Description</label><textarea name="description" maxlength="240">${escapeHtml(a.description)}</textarea></div>
-      <div class="field"><label>N° BEB</label><input name="bebNumber" type="text" maxlength="80" value="${escapeHtml(a.bebNumber || '')}" placeholder="Numéro BEB"></div>
+      <div class="field"><label>N° EB</label><input name="ebNumber" type="text" maxlength="80" value="${escapeHtml(a.ebNumber || '')}" placeholder="Numéro EB"></div>
       <div class="field"><label>N° FDI</label><input name="fdiNumber" type="text" maxlength="80" value="${escapeHtml(a.fdiNumber || '')}" placeholder="Numéro FDI"></div>
       <div class="field full"><label class="urgent-toggle"><input name="urgent" type="checkbox" ${a.urgent?'checked':''}> <span>🚨 <strong>Urgent</strong></span></label></div>
       <div class="field full"><label>Commentaire de résolution / suivi</label><textarea name="resolutionComment" placeholder="Ex. : intervention réalisée, pièce remplacée…">${escapeHtml(a.resolutionComment || '')}</textarea></div>
@@ -741,7 +741,7 @@ function openAnomalyModal(id) {
     const label = buildActionLabel(a, fd, status);
     const roomActive = status !== 'resolu' || anomalies.some(x => x.id !== id && x.roomId === a.roomId && x.status !== 'resolu');
     try {
-      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), bebNumber:String(fd.get('bebNumber')||'').trim(), fdiNumber:String(fd.get('fdiNumber')||'').trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:currentUser?.fullName || 'Service Infra', actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null, roomId:a.roomId, roomActive });
+      await updateAnomaly(id, { status, category:fd.get('category'), description:String(fd.get('description')).trim(), ebNumber:String(fd.get('ebNumber')||'').trim(), fdiNumber:String(fd.get('fdiNumber')||'').trim(), urgent:fd.get('urgent')==='on', resolutionComment:String(fd.get('resolutionComment')||'').trim() }, { actor:currentUser?.fullName || 'Service Infra', actionLabel:label, resolutionPhotoFile:$('#resolution-photo').files?.[0] || null, roomId:a.roomId, roomActive });
       closeModal(); toast('Anomalie mise à jour.');
     } catch(err) { toast(err.message || 'Erreur'); }
   });
