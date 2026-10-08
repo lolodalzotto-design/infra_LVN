@@ -4,7 +4,6 @@ import { renderPlan } from './ui.js?v=20261007-refplan-1';
 import { createAnomaly, createHccRequest, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261008-hcc-1';
 
 let selectedReportType = null;
-let selectedHccType = null;
 let selectedBuilding = null;
 let selectedLevel = null;
 let selectedZone = null;
@@ -13,8 +12,6 @@ let roomStatus = {};
 
 const els = {
   reportTypeButtons: [...document.querySelectorAll('[data-report-type]')],
-  hccTypeStep: document.querySelector('#hcc-type-step'),
-  hccTypeButtons: [...document.querySelectorAll('[data-hcc-type]')],
   locationFlow: document.querySelector('#location-flow'),
   buildingStepNumber: document.querySelector('#building-step-number'),
   levelStepNumber: document.querySelector('#level-step-number'),
@@ -191,15 +188,15 @@ function configureReportForm() {
   els.formStepTitle.textContent = isHcc ? 'Précisez votre demande HCC' : 'Décrivez le problème';
   els.descriptionLabel.textContent = isHcc ? 'Précisez le besoin ou le matériel concerné *' : 'Quel est le problème ? *';
   els.description.placeholder = isHcc
-    ? (selectedHccType === 'approvisionnement' ? 'Ex. : besoin de 4 chaises supplémentaires' : 'Ex. : chaise de bureau cassée à remplacer')
+    ? 'Décrivez librement votre demande HCC'
     : 'Ex. : la chasse d’eau fuit en continu';
   els.categoryPreview.classList.toggle('hidden', isHcc);
-  els.urgentField.classList.toggle('hidden', isHcc);
+  els.urgentField.classList.remove('hidden');
   els.submit.textContent = isHcc ? 'Envoyer la remontée HCC' : 'Soumettre le signalement';
 }
 
 function updateStepNumbers() {
-  const offset = selectedReportType === 'hcc' ? 1 : 0;
+  const offset = 0;
   els.buildingStepNumber.textContent = 2 + offset;
   els.levelStepNumber.textContent = 3 + offset;
   els.zoneStepNumber.textContent = 4 + offset;
@@ -217,25 +214,8 @@ function openLocationFlow() {
 els.reportTypeButtons.forEach((button) => {
   button.addEventListener('click', () => {
     selectedReportType = button.dataset.reportType;
-    selectedHccType = null;
     els.reportTypeButtons.forEach((b) => b.classList.toggle('active', b === button));
-    els.hccTypeButtons.forEach((b) => b.classList.remove('active'));
     resetLocationFlow();
-
-    if (selectedReportType === 'hcc') {
-      els.hccTypeStep.classList.remove('hidden');
-      els.locationFlow.classList.add('hidden');
-    } else {
-      els.hccTypeStep.classList.add('hidden');
-      openLocationFlow();
-    }
-  });
-});
-
-els.hccTypeButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    selectedHccType = button.dataset.hccType;
-    els.hccTypeButtons.forEach((b) => b.classList.toggle('active', b === button));
     openLocationFlow();
   });
 });
@@ -302,7 +282,7 @@ els.form.addEventListener('submit', async (event) => {
       await createHccRequest({
         ...commonPayload,
         zoneId: selectedRoom.zoneId,
-        requestType: selectedHccType
+        urgent: formData.get('urgent') === 'on'
       }, photoFile);
     } else {
       await createAnomaly({
