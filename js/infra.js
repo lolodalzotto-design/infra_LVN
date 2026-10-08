@@ -1,9 +1,9 @@
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
 import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261008-infra-room-tap-3';
 import {
-  getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
-  sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
-  setInfraUserActive,
+  getAppMode, hasSectorSession, loginSector, logoutInfra, getCurrentSectorUser, subscribeCurrentSectorProfile,
+  changeInfraPassword, listSectorUsers, createSectorUser,
+  setSectorUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
 } from './store.js?v=20261008-infra-room-tap-3';
 
@@ -26,7 +26,7 @@ const $ = (s) => document.querySelector(s);
 const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
-  forgotPassword: $('#forgot-password-btn'), changePassword: $('#change-password-btn'),
+  changePassword: $('#change-password-btn'),
   manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
   installApp: $('#install-app-btn'),
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
@@ -101,49 +101,12 @@ function maybeShowMemberInstallGuide() {
   }, 250);
 }
 
-function openNewUserWelcomeModal(created, email, initialPassword) {
-  const fullName = created?.fullName || 'Membre Infrastructure';
-  const instructions = `INFRA LVN
-
-Lien de connexion :
-${INFRA_APP_URL}
-
-Identifiant :
-${email}
-
-Mot de passe initial :
-${initialPassword}
-
-À la première connexion :
-1. Ouvrir le lien Infra.
-2. Se connecter avec l’adresse e-mail et le mot de passe initial.
-3. Le mot de passe peut ensuite être modifié depuis le menu ☰.
-4. Suivre la procédure proposée pour ajouter Infra LVN à l’écran d’accueil du téléphone.`;
-
-  modal(`<div class="modal-head"><div><h2>Compte créé</h2><div class="help">${escapeHtml(fullName)}</div></div><button class="icon-btn" data-close>×</button></div>
-    <div class="onboarding-summary">
-      <div class="onboarding-row"><span>Lien Infra</span><strong>${escapeHtml(INFRA_APP_URL)}</strong></div>
-      <div class="onboarding-row"><span>Adresse e-mail</span><strong>${escapeHtml(email)}</strong></div>
-      <div class="onboarding-row"><span>Mot de passe initial</span><strong>${escapeHtml(initialPassword)}</strong></div>
-    </div>
-    <div class="install-guide">
-      <div class="install-guide-card">
-        <strong>Procédure à transmettre</strong>
-        <span>1. Ouvrir le lien Infra</span>
-        <span>2. Se connecter avec l’adresse e-mail et le mot de passe initial</span>
-        <span>3. Modifier le mot de passe si souhaité</span>
-        <span>4. Ajouter l’application à l’écran d’accueil quand la procédure s’affiche</span>
-      </div>
-    </div>
-    <div class="submit-row">
-      <button id="copy-onboarding-btn" class="secondary" type="button">Copier les instructions</button>
-      <button class="primary" type="button" data-close>Terminer</button>
-    </div>`);
-
-  $('#copy-onboarding-btn').addEventListener('click', async () => {
-    const ok = await copyText(instructions);
-    toast(ok ? 'Instructions copiées.' : 'Copie impossible.');
-  });
+function openNewUserWelcomeModal(created, username, initialPassword) {
+  const instructions = `INFRA LVN\n\nLien de connexion :\n${INFRA_APP_URL}\n\nNom d’utilisateur :\n${username}\n\nMot de passe initial :\n${initialPassword}\n\nL’utilisateur peut ensuite modifier son mot de passe depuis le menu ☰.`;
+  modal(`<div class="modal-head"><div><h2>Compte créé</h2><div class="help">${escapeHtml(created?.fullName || username)}</div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="onboarding-summary"><div class="onboarding-row"><span>Nom d’utilisateur</span><strong>${escapeHtml(username)}</strong></div><div class="onboarding-row"><span>Mot de passe initial</span><strong>${escapeHtml(initialPassword)}</strong></div></div>
+    <div class="submit-row"><button id="copy-onboarding-btn" class="secondary" type="button">Copier les instructions</button><button class="primary" type="button" data-close>Terminer</button></div>`);
+  $('#copy-onboarding-btn').addEventListener('click', async () => toast(await copyText(instructions) ? 'Instructions copiées.' : 'Copie impossible.'));
 }
 
 function setTopMenu(open) {
@@ -250,7 +213,7 @@ function openAdminNotifications() {
 }
 
 async function openShell(profile = null) {
-  currentUser = profile || await getCurrentInfraUser();
+  currentUser = profile || await getCurrentSectorUser('infra');
   if (!currentUser?.authorized) throw new Error('Compte non autorisé.');
   els.loginWrap.classList.add('hidden');
   els.shell.classList.add('active');
@@ -269,7 +232,7 @@ async function openShell(profile = null) {
     syncRoomStatuses(rows).catch(() => {});
   });
   if (!profileUnsubscribe) {
-    profileUnsubscribe = subscribeCurrentInfraProfile(async (profile) => {
+    profileUnsubscribe = subscribeCurrentSectorProfile('infra', async (profile) => {
       if (profile?.authorized || !currentUser) return;
       toast('Votre accès Infrastructure a été révoqué.');
       try { await logoutInfra(); } catch {}
@@ -517,12 +480,6 @@ function openOverviewRoom(roomId) {
   });
 }
 
-function resolveLoginEmail(value) {
-  const raw = String(value || '').trim().toLowerCase();
-  if ([INFRA_OPERATOR, 'infra-lvn'].includes(raw)) return INFRA_AUTH_EMAIL;
-  return raw.includes('@') ? raw : '';
-}
-
 function statusLabel(status) {
   return status === 'a_traiter' ? 'À traiter' : status === 'en_cours' ? 'En cours' : status === 'resolu' ? 'Résolu' : status;
 }
@@ -537,29 +494,6 @@ function buildActionLabel(anomaly, formData, nextStatus) {
   if ((formData.get('urgent') === 'on') !== !!anomaly.urgent) changes.push('Niveau d’urgence modifié');
   if (String(formData.get('resolutionComment') || '').trim() !== String(anomaly.resolutionComment || '').trim()) changes.push('Commentaire de suivi modifié');
   return changes.length ? changes.join(' • ') : 'Anomalie enregistrée sans changement';
-}
-
-function openForgotPasswordModal() {
-  const initial = els.username.value.trim();
-  modal(`<div class="modal-head"><div><h2>Mot de passe oublié</h2><div class="help">Un lien de réinitialisation sera envoyé à l’adresse e-mail du compte.</div></div><button class="icon-btn" data-close>×</button></div>
-    <form id="forgot-form"><div class="form-grid"><div class="field full"><label>Adresse e-mail *</label><input name="login" type="text" autocomplete="username" required value="${escapeHtml(initial)}" placeholder="votre adresse e-mail"></div></div>
-    <div class="submit-row"><button type="button" class="secondary" data-close>Annuler</button><button class="primary" type="submit">Envoyer le lien</button></div></form>`);
-  $('#forgot-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const email = resolveLoginEmail(fd.get('login'));
-    if (!email) { toast('Saisissez votre adresse e-mail.'); return; }
-    const button = e.currentTarget.querySelector('button[type="submit"]');
-    button.disabled = true;
-    try {
-      await sendInfraPasswordReset(email);
-      closeModal();
-      toast('Si ce compte existe, un e-mail de réinitialisation a été envoyé.');
-    } catch {
-      closeModal();
-      toast('Si ce compte existe, un e-mail de réinitialisation a été envoyé.');
-    }
-  });
 }
 
 function openChangePasswordModal() {
@@ -593,69 +527,24 @@ function openChangePasswordModal() {
 async function openUsersModal() {
   if (!currentUser?.isAdmin) return;
   try {
-    const users = await listInfraUsers();
-    modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service Infrastructure. Une révocation coupe immédiatement l’accès aux données Infra.</div></div><button class="icon-btn" data-close>×</button></div>
-      <div class="account-list">${users.map((u) => `<article class="account-card">
-        <div class="account-main">
-          <div class="account-name">${u.role === 'admin' ? 'Session administrateur' : escapeHtml(u.fullName || 'Utilisateur')}</div>
-          <div class="account-email">${u.role === 'admin' ? '' : escapeHtml(u.email || '')}</div>
-          <div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'Infrastructure'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div>
-        </div>
-        <div class="account-actions">
-          ${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Révoquer l’accès' : 'Réactiver'}</button>`}
-        </div>
-      </article>`).join('')}</div>
-      <form id="create-user-form" class="account-create">
-        <h3>Ajouter un membre Infrastructure</h3>
-        <div class="form-grid">
-          <div class="field"><label>Prénom *</label><input name="firstName" required maxlength="60" autocomplete="off"></div>
-          <div class="field"><label>Nom *</label><input name="lastName" required maxlength="60" autocomplete="off"></div>
-          <div class="field full"><label>Adresse e-mail *</label><input name="email" type="email" required maxlength="160" autocomplete="off"></div>
-          <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-        </div>
-        <div class="help">Le compte est créé avec ce mot de passe initial. Ensuite, l’utilisateur peut modifier son mot de passe ou utiliser « Mot de passe oublié ? » avec son adresse e-mail.</div>
-        <div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div>
-      </form>`);
-
-    els.modalRoot.querySelectorAll('.account-toggle').forEach((button) => button.addEventListener('click', async () => {
-      const activate = button.dataset.active !== '1';
-      button.disabled = true;
-      try {
-        await setInfraUserActive(button.dataset.id, activate);
-        toast(activate ? 'Accès réactivé.' : 'Accès révoqué.');
-        closeModal();
-        await openUsersModal();
-      } catch (err) {
-        button.disabled = false;
-        toast(err.message || 'Modification impossible.');
-      }
+    const users = await listSectorUsers('infra');
+    modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service Infrastructure uniquement.</div></div><button class="icon-btn" data-close>×</button></div>
+      <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'Infrastructure'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}</div></article>`).join('')}</div>
+      <form id="create-user-form" class="account-create"><h3>Ajouter un membre Infrastructure</h3><div class="form-grid">
+        <div class="field full"><label>Nom de famille / nom d’utilisateur *</label><input name="username" required maxlength="60" autocomplete="off"></div>
+        <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
+      </div><div class="help">Aucune adresse e-mail n’est nécessaire. Le nom est l’identifiant de connexion.</div><div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div></form>`);
+    els.modalRoot.querySelectorAll('.account-toggle').forEach(button => button.addEventListener('click', async () => {
+      const activate=button.dataset.active!=='1'; button.disabled=true;
+      try { await setSectorUserActive(button.dataset.id,activate,'infra'); toast(activate?'Accès réactivé.':'Accès révoqué.'); closeModal(); await openUsersModal(); }
+      catch(err){ button.disabled=false; toast(err.message||'Modification impossible.'); }
     }));
-
-    $('#create-user-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.currentTarget);
-      const button = e.currentTarget.querySelector('button[type="submit"]');
-      button.disabled = true;
-      try {
-        const email = String(fd.get('email') || '').trim();
-        const initialPassword = String(fd.get('initialPassword') || '');
-        const created = await createInfraUser({
-          firstName: String(fd.get('firstName') || '').trim(),
-          lastName: String(fd.get('lastName') || '').trim(),
-          email,
-          initialPassword
-        });
-        toast(`Compte de ${created.fullName} créé.`);
-        openNewUserWelcomeModal(created, email, initialPassword);
-      } catch (err) {
-        button.disabled = false;
-        const message = err?.code === 'auth/email-already-in-use' ? 'Cette adresse e-mail possède déjà un compte.' : (err.message || 'Création impossible.');
-        toast(message);
-      }
+    $('#create-user-form').addEventListener('submit', async e => {
+      e.preventDefault(); const fd=new FormData(e.currentTarget); const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
+      try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const created=await createSectorUser({username,initialPassword,sector:'infra'}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
+      catch(err){ button.disabled=false; toast(err?.code==='auth/email-already-in-use'?'Ce nom d’utilisateur existe déjà.':(err.message||'Création impossible.')); }
     });
-  } catch (err) {
-    toast(err.message || 'Impossible de charger les comptes.');
-  }
+  } catch(err){ toast(err.message||'Impossible de charger les comptes.'); }
 }
 
 function openRoomModal(roomId) {
@@ -760,16 +649,10 @@ async function init() {
     e.preventDefault();
     els.loginError.textContent = '';
     els.loginError.classList.add('hidden');
-    const email = resolveLoginEmail(els.username.value);
-    if (!email) {
-      els.loginError.textContent = LOGIN_ERROR;
-      els.loginError.classList.remove('hidden');
-      return;
-    }
     const submitBtn = els.loginForm.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     try {
-      const { profile } = await loginInfra(email, els.password.value);
+      const { profile } = await loginSector(els.username.value, els.password.value, 'infra');
       await openShell(profile);
     } catch {
       els.loginError.textContent = LOGIN_ERROR;
@@ -780,12 +663,11 @@ async function init() {
   });
 
   try {
-    if (await hasInfraSession()) await openShell(await getCurrentInfraUser());
+    if (await hasSectorSession('infra')) await openShell(await getCurrentSectorUser('infra'));
   } catch {
     // Le formulaire reste disponible si le contrôle de session échoue.
   }
 
-  els.forgotPassword.addEventListener('click', openForgotPasswordModal);
   els.changePassword.addEventListener('click', () => { closeTopMenu(); openChangePasswordModal(); });
   els.installApp.addEventListener('click', () => { closeTopMenu(); openInstallGuide(); });
   els.manageUsers.addEventListener('click', () => { closeTopMenu(); openUsersModal(); });
