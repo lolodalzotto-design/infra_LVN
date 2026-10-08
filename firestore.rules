@@ -168,7 +168,7 @@ service cloud.firestore {
     }
 
     match /hcc_requests/{requestId} {
-      allow create: if isAnonymous() && validPublicHccRequest();
+      allow create: if (isAnonymous() && validPublicHccRequest()) || isInfra();
       allow read, update, delete: if isInfra();
     }
 
