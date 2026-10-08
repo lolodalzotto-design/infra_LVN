@@ -433,7 +433,13 @@ export async function createHccRequest(payload, photoFile = null) {
     sector: 'HCC',
     status: 'a_traiter',
     createdAt: isoNow(),
-    updatedAt: isoNow()
+    updatedAt: isoNow(),
+    history: [{
+      type: 'creation',
+      label: `Ticket créé par ${`${payload.reporterFirstName || ''} ${payload.reporterLastName || ''}`.trim() || payload.actor || 'Service HCC'}`,
+      at: isoNow(),
+      actor: `${payload.reporterFirstName || ''} ${payload.reporterLastName || ''}`.trim() || payload.actor || 'Service HCC'
+    }]
   };
 
   if (APP_MODE === 'demo') {
