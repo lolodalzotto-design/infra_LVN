@@ -101,7 +101,7 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'roomId', 'roomName', 'buildingId', 'levelId', 'zoneId',
           'reporterFirstName', 'reporterLastName', 'description',
-          'urgent', 'source', 'sector', 'status', 'createdAt', 'updatedAt', 'photoUrl'
+          'urgent', 'source', 'sector', 'status', 'createdAt', 'updatedAt', 'history', 'photoUrl'
         ])
         && request.resource.data.source == 'public'
         && request.resource.data.sector == 'HCC'
