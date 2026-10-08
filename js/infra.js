@@ -1,11 +1,11 @@
-import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-fullscreen-touch-2';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261008-infra-fullscreen-touch-2';
+import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261008-infra-room-tap-3';
 import {
   getAppMode, hasInfraSession, loginInfra, logoutInfra, getCurrentInfraUser, subscribeCurrentInfraProfile,
   sendInfraPasswordReset, changeInfraPassword, listInfraUsers, createInfraUser,
   setInfraUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261008-infra-fullscreen-touch-2';
+} from './store.js?v=20261008-infra-room-tap-3';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
