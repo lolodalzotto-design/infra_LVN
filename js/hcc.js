@@ -5,7 +5,7 @@ import {
   changeInfraPassword, listSectorUsers, createSectorUser,
   setSectorUserActive,
   createHccRequest
-} from './store.js?v=20261008-sector-1';
+} from './store.js?v=20261008-auth-usernames-1';
 import { subscribeHccRequests, updateHccRequest, deleteHccRequest, syncHccRoomStatuses } from './hcc-store.js?v=20261008-hcc-admin-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
