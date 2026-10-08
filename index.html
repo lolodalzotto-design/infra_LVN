@@ -109,7 +109,7 @@
   </script>
   <div id="load-error" role="alert" style="color:#a00;font-weight:700;padding:0 16px"></div>
   <script type="module">
-    import('./js/public.js?v=20261008-sector-1').catch((error) => {
+    import('./js/public.js?v=20261008-agent-neutral-1').catch((error) => {
       console.error('Erreur de démarrage Infra-LVN', error);
       document.getElementById('load-error').textContent =
         'Erreur de démarrage : ' + (error?.message || 'chargement impossible') + '. Rechargez la page.';
