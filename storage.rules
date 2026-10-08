@@ -44,6 +44,16 @@ service firebase.storage {
       allow delete: if isInfra();
     }
 
+    match /hcc-reports/{uid}/{fileName} {
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && validImageUpload();
+
+      allow read: if (signedIn() && request.auth.uid == uid) || isInfra();
+      allow update: if isInfra() && validImageUpload();
+      allow delete: if isInfra();
+    }
+
     match /resolutions/{uid}/{fileName} {
       allow read: if isInfra();
       allow create, update: if isInfra() && validImageUpload();
