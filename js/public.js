@@ -1,8 +1,10 @@
 window.__infraLvnBoot = true;
 import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-refplan-1';
 import { renderPlan } from './ui.js?v=20261007-refplan-1';
-import { createAnomaly, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261007-refplan-1';
+import { createAnomaly, createHccRequest, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261008-hcc-1';
 
+let selectedReportType = null;
+let selectedHccType = null;
 let selectedBuilding = null;
 let selectedLevel = null;
 let selectedZone = null;
@@ -10,6 +12,18 @@ let selectedRoom = null;
 let roomStatus = {};
 
 const els = {
+  reportTypeButtons: [...document.querySelectorAll('[data-report-type]')],
+  hccTypeStep: document.querySelector('#hcc-type-step'),
+  hccTypeButtons: [...document.querySelectorAll('[data-hcc-type]')],
+  locationFlow: document.querySelector('#location-flow'),
+  buildingStepNumber: document.querySelector('#building-step-number'),
+  levelStepNumber: document.querySelector('#level-step-number'),
+  zoneStepNumber: document.querySelector('#zone-step-number'),
+  roomStepNumber: document.querySelector('#room-step-number'),
+  formStepNumber: document.querySelector('#form-step-number'),
+  formStepTitle: document.querySelector('#form-step-title'),
+  descriptionLabel: document.querySelector('#description-label'),
+  urgentField: document.querySelector('#urgent-field'),
   buildingButtons: [...document.querySelectorAll('[data-building]')],
   step2: document.querySelector('#step-2'),
   step3: document.querySelector('#step-3'),
@@ -152,10 +166,79 @@ function selectRoom(room) {
   els.selectedRoom.textContent =
     `${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''} • ${room.code ? room.code + ' — ' : ''}${room.name}`;
 
+  configureReportForm();
   els.formCard.classList.remove('hidden');
   renderCurrentPlan();
   setTimeout(() => els.formCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
 }
+
+function resetLocationFlow() {
+  selectedBuilding = null;
+  selectedLevel = null;
+  selectedZone = null;
+  resetRoomSelection();
+  els.buildingButtons.forEach((b) => b.classList.remove('active'));
+  els.step2.classList.add('hidden');
+  els.step3.classList.add('hidden');
+  els.step4.classList.add('hidden');
+  els.levelButtons.innerHTML = '';
+  els.zoneButtons.innerHTML = '';
+  els.plans.innerHTML = '';
+}
+
+function configureReportForm() {
+  const isHcc = selectedReportType === 'hcc';
+  els.formStepTitle.textContent = isHcc ? 'Précisez votre demande HCC' : 'Décrivez le problème';
+  els.descriptionLabel.textContent = isHcc ? 'Précisez le besoin ou le matériel concerné *' : 'Quel est le problème ? *';
+  els.description.placeholder = isHcc
+    ? (selectedHccType === 'approvisionnement' ? 'Ex. : besoin de 4 chaises supplémentaires' : 'Ex. : chaise de bureau cassée à remplacer')
+    : 'Ex. : la chasse d’eau fuit en continu';
+  els.categoryPreview.classList.toggle('hidden', isHcc);
+  els.urgentField.classList.toggle('hidden', isHcc);
+  els.submit.textContent = isHcc ? 'Envoyer la remontée HCC' : 'Soumettre le signalement';
+}
+
+function updateStepNumbers() {
+  const offset = selectedReportType === 'hcc' ? 1 : 0;
+  els.buildingStepNumber.textContent = 2 + offset;
+  els.levelStepNumber.textContent = 3 + offset;
+  els.zoneStepNumber.textContent = 4 + offset;
+  els.roomStepNumber.textContent = 5 + offset;
+  els.formStepNumber.textContent = 6 + offset;
+}
+
+function openLocationFlow() {
+  resetLocationFlow();
+  updateStepNumbers();
+  configureReportForm();
+  els.locationFlow.classList.remove('hidden');
+}
+
+els.reportTypeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    selectedReportType = button.dataset.reportType;
+    selectedHccType = null;
+    els.reportTypeButtons.forEach((b) => b.classList.toggle('active', b === button));
+    els.hccTypeButtons.forEach((b) => b.classList.remove('active'));
+    resetLocationFlow();
+
+    if (selectedReportType === 'hcc') {
+      els.hccTypeStep.classList.remove('hidden');
+      els.locationFlow.classList.add('hidden');
+    } else {
+      els.hccTypeStep.classList.add('hidden');
+      openLocationFlow();
+    }
+  });
+});
+
+els.hccTypeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    selectedHccType = button.dataset.hccType;
+    els.hccTypeButtons.forEach((b) => b.classList.toggle('active', b === button));
+    openLocationFlow();
+  });
+});
 
 els.buildingButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -178,6 +261,7 @@ els.buildingButtons.forEach((button) => {
 });
 
 els.description.addEventListener('input', () => {
+  if (selectedReportType === 'hcc') return;
   const category = classifyCategory(els.description.value);
   els.categoryPreview.textContent = !els.description.value.trim()
     ? 'La catégorie sera déterminée automatiquement.'
@@ -203,18 +287,30 @@ els.form.addEventListener('submit', async (event) => {
   els.submit.textContent = 'Envoi…';
   try {
     await preparePublicSession();
-    await createAnomaly({
+    const commonPayload = {
       roomId: selectedRoom.id,
       roomName: selectedRoom.code ? `${selectedRoom.code} — ${selectedRoom.name}` : selectedRoom.name,
       buildingId: selectedRoom.buildingId,
       levelId: selectedRoom.levelId,
+      zoneId: selectedRoom.zoneId,
       reporterFirstName: firstName,
       reporterLastName: lastName,
       description,
-      category: classifyCategory(description),
-      urgent: formData.get('urgent') === 'on',
       source: 'public'
-    }, photoFile);
+    };
+
+    if (selectedReportType === 'hcc') {
+      await createHccRequest({
+        ...commonPayload,
+        requestType: selectedHccType
+      }, photoFile);
+    } else {
+      await createAnomaly({
+        ...commonPayload,
+        category: classifyCategory(description),
+        urgent: formData.get('urgent') === 'on'
+      }, photoFile);
+    }
 
     els.form.reset();
     els.categoryPreview.textContent = 'La catégorie sera déterminée automatiquement.';
@@ -222,14 +318,14 @@ els.form.addEventListener('submit', async (event) => {
     selectedRoom = null;
     els.formCard.classList.add('hidden');
     renderCurrentPlan();
-    toast(`Signalement enregistré — ${doneRoom}`);
+    toast(`${selectedReportType === 'hcc' ? 'Remontée HCC enregistrée' : 'Signalement enregistré'} — ${doneRoom}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (error) {
     console.error(error);
     toast(`Impossible d’enregistrer : ${error.message || 'erreur inconnue'}`);
   } finally {
     els.submit.disabled = false;
-    els.submit.textContent = 'Soumettre le signalement';
+    configureReportForm();
   }
 });
 
