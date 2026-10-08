@@ -607,21 +607,32 @@ export function renderPlan(container, buildingId, levelId, {
 
     let touchTapStart = null;
     if (gestureEnabled) {
-      group.addEventListener('pointerdown', (event) => {
-        if (event.pointerType !== 'touch') return;
-        touchTapStart = { x: event.clientX, y: event.clientY };
-      });
-      group.addEventListener('pointerup', (event) => {
-        if (event.pointerType !== 'touch' || !touchTapStart) return;
-        const dx = event.clientX - touchTapStart.x;
-        const dy = event.clientY - touchTapStart.y;
+      // Mobile : TouchEvent pilote le plan en plein écran. Un tap court sur une
+      // pièce doit néanmoins rester une vraie sélection, sans être confondu
+      // avec un glissement/pinch.
+      group.addEventListener('touchstart', (event) => {
+        if (event.touches.length !== 1) {
+          touchTapStart = null;
+          return;
+        }
+        const t = event.touches[0];
+        touchTapStart = { x: t.clientX, y: t.clientY };
+      }, { passive: true });
+      group.addEventListener('touchend', (event) => {
+        if (!touchTapStart || event.changedTouches.length !== 1) {
+          touchTapStart = null;
+          return;
+        }
+        const t = event.changedTouches[0];
+        const dx = t.clientX - touchTapStart.x;
+        const dy = t.clientY - touchTapStart.y;
         touchTapStart = null;
         if (Math.hypot(dx, dy) > 10) return;
         if (svg.__suppressRoomClickUntil && Date.now() < svg.__suppressRoomClickUntil) return;
         svg.__suppressSyntheticClickUntil = Date.now() + 500;
         onRoomClick(room);
-      });
-      group.addEventListener('pointercancel', () => { touchTapStart = null; });
+      }, { passive: true });
+      group.addEventListener('touchcancel', () => { touchTapStart = null; }, { passive: true });
     }
 
     group.addEventListener('click', () => {
