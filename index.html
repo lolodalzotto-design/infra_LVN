@@ -90,8 +90,13 @@
         document.getElementById('location-flow').classList.remove('hidden');
       });
     });
+    document.querySelectorAll('[data-building]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-building]').forEach((b) =>
+          b.classList.toggle('active', b === button));
+      });
+    });
     window.addEventListener('error', (event) => {
-      if (window.__infraLvnBoot) return;
       const box = document.getElementById('load-error');
       if (box) box.textContent = 'Erreur de chargement : ' + (event.message || 'module indisponible') + '. Rechargez la page.';
     });
@@ -104,7 +109,7 @@
   </script>
   <div id="load-error" role="alert" style="color:#a00;font-weight:700;padding:0 16px"></div>
   <script type="module">
-    import('./js/public.js?v=20261008-hcc-3').catch((error) => {
+    import('./js/public.js?v=20261008-hcc-4').catch((error) => {
       console.error('Erreur de démarrage Infra-LVN', error);
       document.getElementById('load-error').textContent =
         'Erreur de démarrage : ' + (error?.message || 'chargement impossible') + '. Rechargez la page.';
