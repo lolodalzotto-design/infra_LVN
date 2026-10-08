@@ -426,6 +426,36 @@ export async function createAnomaly(payload, photoFile = null) {
   return { id: docRef.id, ...record, photoUrl };
 }
 
+export async function createHccRequest(payload, photoFile = null) {
+  const record = {
+    ...payload,
+    status: 'a_traiter',
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+
+  if (APP_MODE === 'demo') {
+    const item = { id: uid(), photoUrl: null, ...record };
+    const key = 'infra_LVN_demo_hcc_requests_v1';
+    let data = [];
+    try { data = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+    data.unshift(item);
+    localStorage.setItem(key, JSON.stringify(data));
+    return item;
+  }
+
+  await preparePublicSession();
+  const photoUrl = await uploadPhoto(photoFile, 'hcc-reports');
+  const { db, fsMod } = await getFirebase();
+  const docRef = await fsMod.addDoc(fsMod.collection(db, 'hcc_requests'), {
+    ...record,
+    photoUrl,
+    createdAt: fsMod.serverTimestamp(),
+    updatedAt: fsMod.serverTimestamp()
+  });
+  return { id: docRef.id, ...record, photoUrl };
+}
+
 export function subscribeRoomStatus(callback) {
   if (APP_MODE === 'demo') {
     callback({});
