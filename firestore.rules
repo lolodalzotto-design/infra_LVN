@@ -23,46 +23,52 @@ service cloud.firestore {
         && request.auth.token.email == 'lolo.dalzotto@gmail.com';
     }
 
-    function hasInfraProfile() {
-      return isPasswordUser()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    function hasProfile() {
+      return isPasswordUser() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
-
-    function infraProfile() {
+    function profile() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-
-    function isInfra() {
-      return isBootstrapAdmin()
-        || (hasInfraProfile()
-          && infraProfile().active == true
-          && infraProfile().role in ['admin', 'infra']);
+    function profileSector() {
+      return profile().sector;
     }
-
-    function isAdmin() {
-      return isBootstrapAdmin()
-        || (hasInfraProfile()
-          && infraProfile().active == true
-          && infraProfile().role == 'admin');
+    function normalizedRole() {
+      return profile().role == 'infra' ? 'user' : profile().role;
     }
+    function isSector(sector) {
+      return isBootstrapAdmin()
+        || (hasProfile() && profile().active == true && profileSector() == sector && normalizedRole() in ['admin','user']);
+    }
+    function isSectorAdmin(sector) {
+      return isBootstrapAdmin()
+        || (hasProfile() && profile().active == true && profileSector() == sector && normalizedRole() == 'admin');
+    }
+    function isInfra() { return isSector('infra'); }
+    function isHcc() { return isSector('hcc'); }
+    function isAdmin() { return isBootstrapAdmin() || (hasProfile() && profile().active == true && normalizedRole() == 'admin'); }
 
-    function validInfraProfile(uid) {
+    function validUserProfile(uid) {
       return request.resource.data.keys().hasOnly([
-          'firstName', 'lastName', 'email', 'role', 'active',
-          'createdAt', 'updatedAt', 'createdByUid'
+          'username','usernameKey','sector','role','active','authEmail',
+          'firstName','lastName','email','createdAt','updatedAt','createdByUid'
         ])
-        && request.resource.data.firstName is string
-        && request.resource.data.firstName.size() > 0
-        && request.resource.data.firstName.size() <= 60
-        && request.resource.data.lastName is string
-        && request.resource.data.lastName.size() > 0
-        && request.resource.data.lastName.size() <= 60
-        && request.resource.data.email is string
-        && request.resource.data.email.size() > 3
-        && request.resource.data.email.size() <= 160
-        && request.resource.data.role in ['admin', 'infra']
         && request.resource.data.active is bool
-        && request.resource.data.createdByUid is string;
+        && request.resource.data.createdByUid is string
+        && (
+          (request.resource.data.username is string
+            && request.resource.data.username.size() > 0
+            && request.resource.data.username.size() <= 60
+            && request.resource.data.usernameKey is string
+            && request.resource.data.usernameKey.size() > 0
+            && request.resource.data.sector in ['infra','hcc']
+            && request.resource.data.role in ['admin','user']
+            && request.resource.data.authEmail is string)
+          ||
+          (request.resource.data.firstName is string
+            && request.resource.data.lastName is string
+            && request.resource.data.email is string
+            && request.resource.data.role in ['admin','infra'])
+        );
     }
 
     function validPublicReport() {
@@ -124,34 +130,32 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      // Un membre peut lire son propre profil. L'administrateur voit tous
-      // les membres afin de gérer les autorisations.
-      allow read: if isAdmin() || (isPasswordUser() && request.auth.uid == uid);
+      allow read: if isPasswordUser() && (
+        request.auth.uid == uid
+        || isBootstrapAdmin()
+        || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
+            && resource.data.sector == profileSector())
+      );
 
-      // Le compte administrateur historique peut créer son propre profil
-      // admin à la première connexion. Tous les autres comptes sont "infra".
-      allow create: if isAdmin()
-        && validInfraProfile(uid)
+      allow create: if validUserProfile(uid) && (
+        (uid == request.auth.uid && isBootstrapAdmin())
+        || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc'])
+        || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
+            && request.resource.data.sector == profileSector()
+            && request.resource.data.role == 'user')
+      );
+
+      allow update: if validUserProfile(uid)
         && (
-          (uid == request.auth.uid
-            && isBootstrapAdmin()
-            && request.resource.data.role == 'admin'
-            && request.resource.data.active == true)
-          || (uid != request.auth.uid && request.resource.data.role == 'infra')
+          isBootstrapAdmin()
+          || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
+              && resource.data.sector == profileSector()
+              && request.resource.data.sector == resource.data.sector
+              && request.resource.data.role == resource.data.role
+              && request.resource.data.username == resource.data.username
+              && request.resource.data.authEmail == resource.data.authEmail)
         );
 
-      // Les rôles ne sont jamais modifiables depuis le navigateur.
-      // Le profil admin ne peut pas être désactivé.
-      allow update: if isAdmin()
-        && validInfraProfile(uid)
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.role == resource.data.role
-        && (
-          resource.data.role != 'admin'
-          || request.resource.data.active == true
-        );
-
-      // On conserve les profils pour l'audit ; une révocation passe par active=false.
       allow delete: if false;
     }
 
@@ -168,8 +172,8 @@ service cloud.firestore {
     }
 
     match /hcc_requests/{requestId} {
-      allow create: if (isAnonymous() && validPublicHccRequest()) || isInfra();
-      allow read, update, delete: if isInfra();
+      allow create: if (isAnonymous() && validPublicHccRequest()) || isHcc();
+      allow read, update, delete: if isHcc();
     }
 
     match /anomalies/{anomalyId} {
