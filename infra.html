@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d223a" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Espace Infra — LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261007-no-filters-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261008-admin-period-topbar-1" />
 </head>
 <body>
 <main>
@@ -50,6 +50,17 @@
       <div class="dashboard-heading">
         <div>
           <h1>Tableau de bord</h1>
+        </div>
+        <div id="kpi-period-wrap" class="dashboard-heading-tools hidden" aria-label="Période des indicateurs">
+          <label for="kpi-period">Période</label>
+          <select id="kpi-period" aria-label="Période des indicateurs">
+            <option value="all">Toute la durée</option>
+            <option value="week">Il y a 1 semaine</option>
+            <option value="month">Il y a 1 mois</option>
+            <option value="3months">Il y a 3 mois</option>
+            <option value="6months">Il y a 6 mois</option>
+            <option value="year">Il y a 1 an</option>
+          </select>
         </div>
       </div>
 
@@ -110,6 +121,6 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261007-no-filters-1"></script>
+  <script type="module" src="./js/infra.js?v=20261008-admin-period-topbar-1"></script>
 </body>
 </html>
