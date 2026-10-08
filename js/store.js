@@ -455,7 +455,8 @@ export async function listSectorUsers(sector) {
   const current = await getCurrentSectorUser(sector);
   if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
   const { db, fsMod } = await getFirebase();
-  const snap = await fsMod.getDocs(fsMod.collection(db,'users'));
+  const q = current.bootstrapAdmin ? fsMod.collection(db,'users') : fsMod.query(fsMod.collection(db,'users'), fsMod.where('sector','==',sector));
+  const snap = await fsMod.getDocs(q);
   return snap.docs.map(d => ({ uid:d.id, ...d.data() }))
     .filter(p => {
       const ps = p.sector || (p.role === 'infra' ? 'infra' : null);
@@ -476,10 +477,8 @@ export async function createSectorUser({ username, initialPassword, sector }) {
   if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
   const authEmail = technicalAuthEmail(key, sector);
   const { db, fsMod, appMod, authMod } = await getFirebase();
-  const existing = await fsMod.getDocs(fsMod.collection(db,'users'));
-  if (existing.docs.some(d => {
-    const p=d.data(); return (p.sector || (p.role==='infra'?'infra':null))===sector && usernameKey(p.username || p.lastName)===key;
-  })) throw new Error('Ce nom d’utilisateur existe déjà dans ce secteur.');
+  const existing = await fsMod.getDocs(fsMod.query(fsMod.collection(db,'users'), fsMod.where('sector','==',sector)));
+  if (existing.docs.some(d => usernameKey(d.data().username || d.data().lastName)===key)) throw new Error('Ce nom d’utilisateur existe déjà dans ce secteur.');
   const secondaryApp = appMod.initializeApp(firebaseConfig, `sector-create-${uid()}`);
   const secondaryAuth = authMod.getAuth(secondaryApp);
   let createdUser=null, profileCreated=false;
