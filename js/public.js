@@ -292,7 +292,6 @@ els.form.addEventListener('submit', async (event) => {
       roomName: selectedRoom.code ? `${selectedRoom.code} — ${selectedRoom.name}` : selectedRoom.name,
       buildingId: selectedRoom.buildingId,
       levelId: selectedRoom.levelId,
-      zoneId: selectedRoom.zoneId,
       reporterFirstName: firstName,
       reporterLastName: lastName,
       description,
@@ -302,6 +301,7 @@ els.form.addEventListener('submit', async (event) => {
     if (selectedReportType === 'hcc') {
       await createHccRequest({
         ...commonPayload,
+        zoneId: selectedRoom.zoneId,
         requestType: selectedHccType
       }, photoFile);
     } else {
