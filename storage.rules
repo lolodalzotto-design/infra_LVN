@@ -16,17 +16,18 @@ service firebase.storage {
         && request.auth.token.email == 'lolo.dalzotto@gmail.com';
     }
 
-    function hasInfraProfile() {
-      return isPasswordUser()
-        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    function hasProfile() {
+      return isPasswordUser() && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
     }
-
-    function isInfra() {
+    function profile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function isSector(sector) {
       return isBootstrapAdmin()
-        || (hasInfraProfile()
-          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.active == true
-          && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'infra']);
+        || (hasProfile() && profile().active == true && profile().sector == sector && profile().role in ['admin','user']);
     }
+    function isInfra() { return isSector('infra'); }
+    function isHcc() { return isSector('hcc'); }
 
     function validImageUpload() {
       return request.resource != null
@@ -49,9 +50,9 @@ service firebase.storage {
         && request.auth.uid == uid
         && validImageUpload();
 
-      allow read: if (signedIn() && request.auth.uid == uid) || isInfra();
-      allow update: if isInfra() && validImageUpload();
-      allow delete: if isInfra();
+      allow read: if (signedIn() && request.auth.uid == uid) || isHcc();
+      allow update: if isHcc() && validImageUpload();
+      allow delete: if isHcc();
     }
 
     match /resolutions/{uid}/{fileName} {
