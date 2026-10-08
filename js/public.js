@@ -1,14 +1,13 @@
 window.__infraLvnBoot = true;
 import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-refplan-1';
 import { renderPlan } from './ui.js?v=20261007-refplan-1';
-import { createAnomaly, createHccRequest, preparePublicSession, subscribeRoomStatus } from './store.js?v=20261008-hcc-1';
+import { createAnomaly, createHccRequest, preparePublicSession } from './store.js?v=20261008-sector-1';
 
 let selectedReportType = null;
 let selectedBuilding = null;
 let selectedLevel = null;
 let selectedZone = null;
 let selectedRoom = null;
-let roomStatus = {};
 
 const els = {
   reportTypeButtons: [...document.querySelectorAll('[data-report-type]')],
@@ -121,10 +120,7 @@ function renderCurrentPlan() {
     <h3>
       <span>${building.label} • ${level.label}${availableZones().length > 1 ? ` • ${zone.label}` : ''}</span>
     </h3>
-    <div class="plan-legend" aria-label="Légende du plan">
-      <span class="plan-legend-item"><i class="plan-legend-dot ok"></i>OK</span>
-      <span class="plan-legend-item"><i class="plan-legend-dot alert"></i>Anomalie</span>
-    </div>
+
     <div class="plan-canvas"></div>
   `;
 
@@ -138,7 +134,7 @@ function renderCurrentPlan() {
   renderPlan(canvas, selectedBuilding, selectedLevel, {
     zoneId: selectedZone,
     mode: 'public',
-    roomStatus,
+    roomStatus: {},
     selectedRoomId: selectedRoom?.id,
     onRoomClick: selectRoom
   });
@@ -309,9 +305,3 @@ els.form.addEventListener('submit', async (event) => {
   }
 });
 
-subscribeRoomStatus((status) => {
-  roomStatus = status || {};
-  if (selectedBuilding && selectedLevel && selectedZone && !els.step4.classList.contains('hidden')) {
-    renderCurrentPlan();
-  }
-});
