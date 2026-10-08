@@ -398,7 +398,7 @@ export async function createAnomaly(payload, photoFile = null) {
     resolutionPhotoUrl: null,
     history: [{
       type: 'creation',
-      label: payload.source === 'infra' ? 'Anomalie créée par le service Infra' : 'Anomalie signalée',
+      label: `Ticket créé par ${payload.reporterFirstName || payload.reporterLastName ? `${payload.reporterFirstName || ''} ${payload.reporterLastName || ''}`.trim() : (payload.actor || 'Service Infra')}`,
       at: isoNow(),
       actor: payload.reporterFirstName || payload.reporterLastName
         ? `${payload.reporterFirstName || ''} ${payload.reporterLastName || ''}`.trim()
