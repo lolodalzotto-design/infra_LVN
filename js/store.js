@@ -373,6 +373,149 @@ export async function setInfraUserActive(userId, active) {
 }
 
 
+
+function normalizeUsername(value) {
+  return String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+function usernameKey(value) {
+  return normalizeUsername(value).replace(/[^a-z0-9._-]/g, '');
+}
+function technicalAuthEmail(username, sector) {
+  const key = usernameKey(username);
+  if (!key) throw new Error('Nom d’utilisateur invalide.');
+  return `${key}.${sector}@lvn.local`;
+}
+function normalizeSector(value) {
+  const sector = String(value || '').trim().toLowerCase();
+  if (!['infra', 'hcc'].includes(sector)) throw new Error('Secteur invalide.');
+  return sector;
+}
+
+export async function getCurrentSectorUser(sector, { bootstrapAdmin = true } = {}) {
+  sector = normalizeSector(sector);
+  if (APP_MODE === 'demo') return { uid:'demo-admin', username:sector + '_lvn', sector, role:'admin', active:true, fullName:'Administrateur', isAdmin:true, authorized:true };
+  const { auth, db, fsMod } = await getFirebase();
+  await auth.authStateReady();
+  const user = auth.currentUser;
+  if (!user || user.isAnonymous) return null;
+  const bootstrap = normalizeEmail(user.email) === ADMIN_AUTH_EMAIL;
+  const ref = fsMod.doc(db, 'users', user.uid);
+  let snap = await fsMod.getDoc(ref);
+  if (!snap.exists() && bootstrap && bootstrapAdmin) {
+    const now = fsMod.serverTimestamp();
+    await fsMod.setDoc(ref, { firstName:'Laurent', lastName:'Dal Zotto', email:ADMIN_AUTH_EMAIL, username:'infra_lvn', sector:'infra', role:'admin', active:true, createdAt:now, updatedAt:now, createdByUid:user.uid }, { merge:true });
+    snap = await fsMod.getDoc(ref);
+  }
+  if (!snap.exists()) return { uid:user.uid, active:false, authorized:false, isAdmin:false };
+  const p = snap.data();
+  const profileSector = p.sector || (p.role === 'infra' || bootstrap ? 'infra' : null);
+  const role = p.role === 'infra' ? 'user' : p.role;
+  const authorized = p.active === true && (bootstrap || profileSector === sector) && ['admin','user'].includes(role);
+  return { uid:user.uid, ...p, username:p.username || p.lastName || user.displayName || '', sector:profileSector, role, fullName:p.username || fullName(p) || user.displayName || '', isAdmin:authorized && (role === 'admin' || bootstrap), authorized, bootstrapAdmin:bootstrap };
+}
+
+export async function loginSector(username, password, sector) {
+  sector = normalizeSector(sector);
+  const normalized = normalizeUsername(username);
+  const legacyAlias = sector === 'infra' && ['infra_lvn','infra-lvn'].includes(normalized);
+  const email = legacyAlias ? ADMIN_AUTH_EMAIL : technicalAuthEmail(normalized, sector);
+  const { auth, authMod } = await getFirebase();
+  const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
+  const profile = await getCurrentSectorUser(sector);
+  if (!profile?.authorized) {
+    await authMod.signOut(auth);
+    const error = new Error('Compte non autorisé pour ce secteur.');
+    error.code = 'sector/not-authorized';
+    throw error;
+  }
+  return { user:credential.user, profile };
+}
+
+export async function hasSectorSession(sector) {
+  const p = await getCurrentSectorUser(sector);
+  return !!p?.authorized;
+}
+
+export function subscribeCurrentSectorProfile(sector, callback) {
+  sector = normalizeSector(sector);
+  let unsub = () => {};
+  getFirebase().then(async ({ auth, db, fsMod }) => {
+    await auth.authStateReady();
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) { callback(null); return; }
+    unsub = fsMod.onSnapshot(fsMod.doc(db,'users',user.uid), async () => {
+      try { callback(await getCurrentSectorUser(sector, { bootstrapAdmin:false })); } catch { callback(null); }
+    }, () => callback(null));
+  });
+  return () => unsub();
+}
+
+export async function listSectorUsers(sector) {
+  sector = normalizeSector(sector);
+  const current = await getCurrentSectorUser(sector);
+  if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
+  const { db, fsMod } = await getFirebase();
+  const snap = await fsMod.getDocs(fsMod.collection(db,'users'));
+  return snap.docs.map(d => ({ uid:d.id, ...d.data() }))
+    .filter(p => {
+      const ps = p.sector || (p.role === 'infra' ? 'infra' : null);
+      return ps === sector || (current.bootstrapAdmin && p.email === ADMIN_AUTH_EMAIL && sector === 'infra');
+    })
+    .map(p => ({ ...p, role:p.role === 'infra' ? 'user' : p.role, username:p.username || p.lastName || '', fullName:p.username || fullName(p) || 'Utilisateur', isAdmin:p.role === 'admin' }))
+    .sort((a,b) => (a.username || '').localeCompare(b.username || '', 'fr'));
+}
+
+export async function createSectorUser({ username, initialPassword, sector }) {
+  sector = normalizeSector(sector);
+  const current = await getCurrentSectorUser(sector);
+  if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
+  const display = String(username || '').trim();
+  const key = usernameKey(display);
+  const password = String(initialPassword || '');
+  if (!key) throw new Error('Le nom d’utilisateur est obligatoire.');
+  if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
+  const authEmail = technicalAuthEmail(key, sector);
+  const { db, fsMod, appMod, authMod } = await getFirebase();
+  const existing = await fsMod.getDocs(fsMod.collection(db,'users'));
+  if (existing.docs.some(d => {
+    const p=d.data(); return (p.sector || (p.role==='infra'?'infra':null))===sector && usernameKey(p.username || p.lastName)===key;
+  })) throw new Error('Ce nom d’utilisateur existe déjà dans ce secteur.');
+  const secondaryApp = appMod.initializeApp(firebaseConfig, `sector-create-${uid()}`);
+  const secondaryAuth = authMod.getAuth(secondaryApp);
+  let createdUser=null, profileCreated=false;
+  try {
+    const credential = await authMod.createUserWithEmailAndPassword(secondaryAuth, authEmail, password);
+    createdUser=credential.user;
+    await authMod.updateProfile(createdUser,{displayName:display});
+    await fsMod.setDoc(fsMod.doc(db,'users',createdUser.uid),{
+      username:display, usernameKey:key, sector, role:'user', active:true,
+      authEmail, createdAt:fsMod.serverTimestamp(), updatedAt:fsMod.serverTimestamp(), createdByUid:current.uid
+    });
+    profileCreated=true;
+    return { uid:createdUser.uid, username:display, sector, role:'user', active:true, fullName:display };
+  } catch(error) {
+    if (createdUser && !profileCreated) { try { await authMod.deleteUser(createdUser); } catch {} }
+    throw error;
+  } finally {
+    try { await authMod.signOut(secondaryAuth); } catch {}
+    try { await appMod.deleteApp(secondaryApp); } catch {}
+  }
+}
+
+export async function setSectorUserActive(userId, active, sector) {
+  sector = normalizeSector(sector);
+  const current = await getCurrentSectorUser(sector);
+  if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
+  if (userId === current.uid && !active) throw new Error('Le compte administrateur ne peut pas être révoqué.');
+  const { db, fsMod } = await getFirebase();
+  const ref=fsMod.doc(db,'users',userId), snap=await fsMod.getDoc(ref);
+  if (!snap.exists()) throw new Error('Utilisateur introuvable.');
+  const p=snap.data(), ps=p.sector || (p.role==='infra'?'infra':null);
+  if (ps !== sector) throw new Error('Compte hors de votre secteur.');
+  await fsMod.updateDoc(ref,{active:!!active,updatedAt:fsMod.serverTimestamp()});
+}
+
+
 async function uploadPhoto(file, kind = 'reports') {
   if (!file) return null;
   if (APP_MODE === 'demo') return null;
