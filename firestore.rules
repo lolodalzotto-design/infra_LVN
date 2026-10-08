@@ -100,11 +100,11 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'roomId', 'roomName', 'buildingId', 'levelId', 'zoneId',
           'reporterFirstName', 'reporterLastName', 'description',
-          'requestType', 'source', 'status', 'createdAt', 'updatedAt', 'photoUrl'
+          'urgent', 'source', 'status', 'createdAt', 'updatedAt', 'photoUrl'
         ])
         && request.resource.data.source == 'public'
         && request.resource.data.status == 'a_traiter'
-        && request.resource.data.requestType in ['approvisionnement', 'remplacement']
+        && request.resource.data.urgent is bool
         && request.resource.data.roomId is string
         && request.resource.data.roomName is string
         && request.resource.data.buildingId in ['A', 'B']
