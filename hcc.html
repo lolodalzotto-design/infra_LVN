@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d223a" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <meta name="application-name" content="HCC-LVN" />
+  <meta name="apple-mobile-web-app-title" content="HCC-LVN" />
+  <meta name="description" content="Suivi HCC de la caserne" />
+  <title>HCC-LVN</title>
+  <link rel="stylesheet" href="./styles.css?v=20261008-infra-room-tap-3" />
+</head>
+<body>
+<main>
+    <section id="login-wrap" class="login-wrap">
+      <div class="login-card">
+        <h2>Accès responsable HCC</h2>
+        <p class="help">Cet espace est réservé au service HCC.</p>
+        <form id="login-form" novalidate>
+          <div class="field"><label for="username">Identifiant ou adresse e-mail</label><input id="username" type="text" autocomplete="username" placeholder="hcc_lvn ou votre adresse e-mail" /></div>
+          <div class="field"><label for="password">Mot de passe</label><input id="password" type="password" autocomplete="current-password" /></div>
+          <p id="login-error" class="login-error hidden" role="alert"></p>
+          <button class="primary" type="submit">Se connecter</button><button id="forgot-password-btn" class="text-button" type="button">Mot de passe oublié ?</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="infra-shell" class="infra-shell">
+      <header class="infra-topbar">
+        <div class="infra-topbar-brand">HCC LVN</div>
+        <div id="current-user" class="current-user infra-topbar-user"></div>
+        <div class="infra-topbar-actions">
+          <button id="notification-button" class="notification-button hidden" type="button" aria-label="Nouveaux signalements" title="Nouveaux signalements">
+            <span class="notification-bell" aria-hidden="true">🔔</span>
+            <span id="notification-badge" class="notification-badge hidden">0</span>
+          </button>
+          <div class="infra-menu-wrap">
+            <button id="top-menu-button" class="infra-menu-button" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="top-menu">
+              <span></span><span></span><span></span>
+            </button>
+            <nav id="top-menu" class="infra-menu hidden" aria-label="Menu Infrastructure">
+            <a class="infra-menu-item infra-menu-primary" href="./index.html">Signaler une anomalie</a>
+            <button id="manage-users-btn" class="infra-menu-item hidden" type="button">Gérer les accès</button>
+            <button id="change-password-btn" class="infra-menu-item" type="button">Modifier mon mot de passe</button>
+            <button id="install-app-btn" class="infra-menu-item" type="button">Ajouter à l’écran d’accueil</button>
+            <button id="logout-btn" class="infra-menu-item infra-menu-danger hidden" type="button">Déconnexion</button>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <div class="dashboard-heading">
+        <div>
+          <h1>Tableau de bord</h1>
+        </div>
+        <div id="kpi-period-wrap" class="dashboard-heading-tools hidden" aria-label="Période des indicateurs">
+          <label for="kpi-period">Période</label>
+          <select id="kpi-period" aria-label="Période des indicateurs">
+            <option value="all">Toute la durée</option>
+            <option value="week">Il y a 1 semaine</option>
+            <option value="month">Il y a 1 mois</option>
+            <option value="3months">Il y a 3 mois</option>
+            <option value="6months">Il y a 6 mois</option>
+            <option value="year">Il y a 1 an</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="dashboard-grid">
+        <article class="kpi kpi-total"><div class="label">Anomalies totales</div><div id="kpi-total" class="value">0</div></article>
+        <article class="kpi kpi-open"><div class="label">À traiter</div><div id="kpi-open" class="value">0</div></article>
+        <article class="kpi kpi-progress"><div class="label">En cours</div><div id="kpi-progress" class="value">0</div></article>
+        <article class="kpi kpi-resolved"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % réalisé</div></article>
+      </section>
+      <section id="urgent-panel" class="panel urgent-panel admin-overview hidden">
+        <div class="panel-heading">
+          <div><h2>Urgences</h2><div class="help">Anomalies urgentes encore actives</div></div>
+          <span id="urgent-count" class="priority-count">0</span>
+        </div>
+        <div id="urgent-list" class="priority-list"></div>
+      </section>
+
+      <section class="panel plan-visualizer-panel admin-overview">
+        <div class="panel-heading">
+          <div>
+            <h2>Visualisation des plans</h2>
+            <div class="help">Choisissez un plan pour voir directement les anomalies sur la carte.</div>
+          </div>
+          <div class="plan-status-legend" aria-label="Légende des plans">
+            <span><i class="legend-dot legend-red"></i>À traiter</span>
+            <span><i class="legend-dot legend-orange"></i>En cours</span>
+                      </div>
+        </div>
+
+        <div class="plan-picker">
+          <div class="field">
+            <label for="plan-building">Bâtiment</label>
+            <select id="plan-building"></select>
+          </div>
+          <div class="field">
+            <label for="plan-level">Niveau</label>
+            <select id="plan-level"></select>
+          </div>
+          <div id="plan-zone-field" class="field">
+            <label for="plan-zone">Zone</label>
+            <select id="plan-zone"></select>
+          </div>
+        </div>
+
+        <div class="plan-visualizer-meta">
+          <strong id="plan-title"></strong>
+          <span id="plan-anomaly-count" class="help"></span>
+        </div>
+        <div id="selected-plan" class="plan-canvas plan-visualizer-canvas"></div>
+      </section>
+
+      <section class="panel anomaly-list-panel">
+        <h2>Anomalies en cours <span id="list-count" class="help"></span></h2>
+        <div id="anomaly-list" class="anomaly-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>infra_LVN • Suivi des anomalies</footer>
+  <div id="modal-root"></div>
+  <script type="module" src="./js/hcc.js?v=20261008-hcc-admin-1"></script>
+</body>
+</html>
