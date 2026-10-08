@@ -389,6 +389,7 @@ async function uploadPhoto(file, kind = 'reports') {
 export async function createAnomaly(payload, photoFile = null) {
   const record = {
     ...payload,
+    sector: 'INFRA',
     status: payload.status || 'a_traiter',
     createdAt: isoNow(),
     updatedAt: isoNow(),
@@ -429,6 +430,7 @@ export async function createAnomaly(payload, photoFile = null) {
 export async function createHccRequest(payload, photoFile = null) {
   const record = {
     ...payload,
+    sector: 'HCC',
     status: 'a_traiter',
     createdAt: isoNow(),
     updatedAt: isoNow()
@@ -524,7 +526,7 @@ export function subscribeAnomalies(callback) {
           resolvedAt: v.resolvedAt?.toDate ? v.resolvedAt.toDate().toISOString() : v.resolvedAt
         };
       });
-      callback(rows);
+      callback(rows.filter((row) => !row.sector || row.sector === 'INFRA'));
     });
   });
   return () => unsub();
