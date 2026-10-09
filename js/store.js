@@ -419,7 +419,8 @@ export async function loginSector(username, password, sector) {
   sector = normalizeSector(sector);
   const normalized = normalizeUsername(username);
   const legacyAlias = ['infra_lvn','infra-lvn','hcc_lvn','hcc-lvn','infra','hcc','admin','administrateur','administrateur infra','administrateur hcc'].includes(normalized);
-  const email = legacyAlias ? ADMIN_AUTH_EMAIL : (normalized === 'moderateur' || normalized === 'modérateur' ? technicalAuthEmail('moderateur', 'both') : technicalAuthEmail(normalized, sector));
+  const moderatorLogin = ['admin-lvn', 'moderateur', 'modérateur'].includes(normalized);
+  const email = legacyAlias ? ADMIN_AUTH_EMAIL : technicalAuthEmail(normalized, moderatorLogin ? 'both' : sector);
   const { auth, authMod } = await getFirebase();
   const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
   const profile = await getCurrentSectorUser(sector);
@@ -475,7 +476,7 @@ export async function createSectorUser({ username, initialPassword, sector, role
   if (!['user','moderator'].includes(role)) throw new Error('Rôle non autorisé.');
   const display = String(username || '').trim();
   const key = usernameKey(display);
-  if (role === 'moderator' && key !== 'moderateur') throw new Error('Utiliser le nom d’utilisateur moderateur pour le compte transversal.');
+  if (role === 'moderator' && key !== 'admin-lvn') throw new Error('Utiliser le nom d’utilisateur admin-lvn pour le compte transversal.');
   const password = String(initialPassword || '');
   if (!key) throw new Error('Le nom d’utilisateur est obligatoire.');
   if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
