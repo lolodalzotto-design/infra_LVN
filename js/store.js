@@ -410,7 +410,7 @@ export async function getCurrentSectorUser(sector, { bootstrapAdmin = true } = {
   const p = snap.data();
   const profileSector = p.sector || (p.role === 'infra' || bootstrap ? 'infra' : null);
   const role = p.role === 'infra' ? 'user' : p.role;
-  const authorized = p.active === true && (bootstrap || profileSector === sector) && ['admin','user'].includes(role);
+  const authorized = bootstrap || (p.active === true && profileSector === sector && ['admin','user'].includes(role));
   return { uid:user.uid, ...p, username:p.username || p.lastName || user.displayName || '', sector:profileSector, role, fullName:p.username || fullName(p) || user.displayName || '', isAdmin:authorized && (role === 'admin' || bootstrap), authorized, bootstrapAdmin:bootstrap };
 }
 
