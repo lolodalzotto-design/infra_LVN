@@ -475,6 +475,7 @@ export async function createSectorUser({ username, initialPassword, sector, role
   if (!['user','moderator'].includes(role)) throw new Error('Rôle non autorisé.');
   const display = String(username || '').trim();
   const key = usernameKey(display);
+  if (role === 'moderator' && key !== 'moderateur') throw new Error('Utiliser le nom d’utilisateur moderateur pour le compte transversal.');
   const password = String(initialPassword || '');
   if (!key) throw new Error('Le nom d’utilisateur est obligatoire.');
   if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
