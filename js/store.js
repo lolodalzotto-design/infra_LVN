@@ -461,7 +461,7 @@ export async function listSectorUsers(sector) {
   return snap.docs.map(d => ({ uid:d.id, ...d.data() }))
     .filter(p => {
       const ps = p.sector || (p.role === 'infra' ? 'infra' : null);
-      return ps === sector || (current.bootstrapAdmin && p.email === ADMIN_AUTH_EMAIL && sector === 'infra');
+      return ps === sector || (current.bootstrapAdmin && (ps === 'both' || (p.email === ADMIN_AUTH_EMAIL && sector === 'infra')));
     })
     .map(p => ({ ...p, role:p.role === 'infra' ? 'user' : p.role, username:p.username || p.lastName || '', fullName:p.username || fullName(p) || 'Utilisateur', isAdmin:p.role === 'admin' }))
     .sort((a,b) => (a.username || '').localeCompare(b.username || '', 'fr'));
@@ -515,7 +515,7 @@ export async function setSectorUserActive(userId, active, sector) {
   const ref=fsMod.doc(db,'users',userId), snap=await fsMod.getDoc(ref);
   if (!snap.exists()) throw new Error('Utilisateur introuvable.');
   const p=snap.data(), ps=p.sector || (p.role==='infra'?'infra':null);
-  if (ps !== sector) throw new Error('Compte hors de votre secteur.');
+  if (ps !== sector && !(current.bootstrapAdmin && ps === 'both')) throw new Error('Compte hors de votre secteur.');
   await fsMod.updateDoc(ref,{active:!!active,updatedAt:fsMod.serverTimestamp()});
 }
 
