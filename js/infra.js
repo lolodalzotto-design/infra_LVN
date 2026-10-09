@@ -27,7 +27,7 @@ const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
   changePassword: $('#change-password-btn'),
-  manageUsers: $('#manage-users-btn'), currentUser: $('#current-user'),
+  manageUsers: $('#manage-users-btn'), sectorSwitch: $('#sector-switch-link'), currentUser: $('#current-user'),
   installApp: $('#install-app-btn'),
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
   notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
@@ -221,6 +221,7 @@ async function openShell(profile = null) {
   closeTopMenu();
   els.currentUser.textContent = currentUser.isAdmin ? 'Session administrateur' : `${currentUser.fullName} • Service Infrastructure`;
   els.manageUsers.classList.toggle('hidden', !currentUser.isAdmin || currentUser.migrationPending === true);
+  els.sectorSwitch.classList.toggle('hidden', !currentUser.isModerator && !currentUser.bootstrapAdmin);
   els.notificationButton.classList.toggle('hidden', !currentUser.isAdmin);
   els.kpiPeriodWrap.classList.toggle('hidden', !currentUser.isAdmin);
   document.querySelectorAll('.admin-overview').forEach(node => node.classList.remove('hidden'));
@@ -244,7 +245,7 @@ async function openShell(profile = null) {
 function closeShell() {
   currentUser = null;
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
-  els.manageUsers.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
+  els.manageUsers.classList.add('hidden'); els.sectorSwitch.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
   newAdminAnomalies = []; els.currentUser.textContent = ''; closeTopMenu();
   els.kpiPeriod.value = 'all';
   unsubscribe?.(); unsubscribe = null;
@@ -529,9 +530,10 @@ async function openUsersModal() {
   try {
     const users = await listSectorUsers('infra');
     modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service Infrastructure uniquement.</div></div><button class="icon-btn" data-close>×</button></div>
-      <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'Infrastructure'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}</div></article>`).join('')}</div>
+      <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : (u.role === 'moderator' ? 'Modérateur INFRA + HCC' : 'Infrastructure')}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}</div></article>`).join('')}</div>
       <form id="create-user-form" class="account-create"><h3>Ajouter un membre Infrastructure</h3><div class="form-grid">
         <div class="field full"><label>Nom de famille / nom d’utilisateur *</label><input name="username" required maxlength="60" autocomplete="off"></div>
+        ${currentUser.bootstrapAdmin ? `<div class="field full"><label>Type de compte</label><select name="role"><option value="user">Utilisateur Infrastructure</option><option value="moderator">Modérateur INFRA + HCC (identifiant : moderateur)</option></select></div>` : ''}
         <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
       </div><div class="help">Aucune adresse e-mail n’est nécessaire. Le nom est l’identifiant de connexion.</div><div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div></form>`);
     els.modalRoot.querySelectorAll('.account-toggle').forEach(button => button.addEventListener('click', async () => {
@@ -541,7 +543,7 @@ async function openUsersModal() {
     }));
     $('#create-user-form').addEventListener('submit', async e => {
       e.preventDefault(); const fd=new FormData(e.currentTarget); const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
-      try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const created=await createSectorUser({username,initialPassword,sector:'infra'}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
+      try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const role=String(fd.get('role')||'user'); const created=await createSectorUser({username,initialPassword,sector:'infra',role}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
       catch(err){ button.disabled=false; toast(err?.code==='auth/email-already-in-use'?'Ce nom d’utilisateur existe déjà.':(err.message||'Création impossible.')); }
     });
   } catch(err){ toast(err.message||'Impossible de charger les comptes.'); }
