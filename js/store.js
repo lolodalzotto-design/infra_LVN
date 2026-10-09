@@ -417,7 +417,7 @@ export async function getCurrentSectorUser(sector, { bootstrapAdmin = true } = {
 export async function loginSector(username, password, sector) {
   sector = normalizeSector(sector);
   const normalized = normalizeUsername(username);
-  const legacyAlias = (sector === 'infra' && ['infra_lvn','infra-lvn'].includes(normalized)) || (sector === 'hcc' && ['hcc_lvn','hcc-lvn'].includes(normalized));
+  const legacyAlias = ['infra_lvn','infra-lvn','hcc_lvn','hcc-lvn','infra','hcc','admin','administrateur','administrateur infra','administrateur hcc'].includes(normalized);
   const email = legacyAlias ? ADMIN_AUTH_EMAIL : technicalAuthEmail(normalized, sector);
   const { auth, authMod } = await getFirebase();
   const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
