@@ -24,6 +24,7 @@ service firebase.storage {
     }
     function isSector(sector) {
       return isBootstrapAdmin()
+        || (hasProfile() && profile().active == true && profile().sector == 'both' && profile().role == 'moderator')
         || (hasProfile() && profile().active == true && profile().sector == sector && profile().role in ['admin','user']);
     }
     function isInfra() { return isSector('infra'); }
