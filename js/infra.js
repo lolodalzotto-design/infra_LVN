@@ -5,7 +5,7 @@ import {
   changeInfraPassword, listSectorUsers, createSectorUser,
   setSectorUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261008-auth-usernames-1';
+} from './store.js?v=20261009-admin-lvn-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
@@ -533,7 +533,7 @@ async function openUsersModal() {
       <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : (u.role === 'moderator' ? 'Modérateur INFRA + HCC' : 'Infrastructure')}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}</div></article>`).join('')}</div>
       <form id="create-user-form" class="account-create"><h3>Ajouter un membre Infrastructure</h3><div class="form-grid">
         <div class="field full"><label>Nom de famille / nom d’utilisateur *</label><input name="username" required maxlength="60" autocomplete="off"></div>
-        ${currentUser.bootstrapAdmin ? `<div class="field full"><label>Type de compte</label><select name="role"><option value="user">Utilisateur Infrastructure</option><option value="moderator">Modérateur INFRA + HCC (identifiant : moderateur)</option></select></div>` : ''}
+        ${currentUser.bootstrapAdmin ? `<div class="field full"><label>Type de compte</label><select name="role"><option value="user">Utilisateur Infrastructure</option><option value="moderator">Modérateur INFRA + HCC (identifiant : admin-lvn)</option></select></div>` : ''}
         <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
       </div><div class="help">Aucune adresse e-mail n’est nécessaire. Le nom est l’identifiant de connexion.</div><div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div></form>`);
     els.modalRoot.querySelectorAll('.account-toggle').forEach(button => button.addEventListener('click', async () => {
