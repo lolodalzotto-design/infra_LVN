@@ -37,6 +37,7 @@ service cloud.firestore {
     }
     function isSector(sector) {
       return isBootstrapAdmin()
+        || (hasProfile() && profile().active == true && normalizedRole() == 'moderator' && profileSector() == 'both')
         || (hasProfile() && profile().active == true && profileSector() == sector && normalizedRole() in ['admin','user']);
     }
     function isSectorAdmin(sector) {
@@ -60,8 +61,10 @@ service cloud.firestore {
             && request.resource.data.username.size() <= 60
             && request.resource.data.usernameKey is string
             && request.resource.data.usernameKey.size() > 0
-            && request.resource.data.sector in ['infra','hcc']
-            && request.resource.data.role in ['admin','user']
+            && request.resource.data.sector in ['infra','hcc','both']
+            && request.resource.data.role in ['admin','user','moderator']
+            && (request.resource.data.role != 'moderator' || request.resource.data.sector == 'both')
+            && (request.resource.data.sector != 'both' || request.resource.data.role == 'moderator')
             && request.resource.data.authEmail is string)
           ||
           (request.resource.data.firstName is string
@@ -139,7 +142,7 @@ service cloud.firestore {
 
       allow create: if validUserProfile(uid) && (
         (uid == request.auth.uid && isBootstrapAdmin())
-        || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc'])
+        || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc','both'])
         || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
             && request.resource.data.sector == profileSector()
             && request.resource.data.role == 'user')
