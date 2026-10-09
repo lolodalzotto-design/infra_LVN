@@ -410,15 +410,16 @@ export async function getCurrentSectorUser(sector, { bootstrapAdmin = true } = {
   const p = snap.data();
   const profileSector = p.sector || (p.role === 'infra' || bootstrap ? 'infra' : null);
   const role = p.role === 'infra' ? 'user' : p.role;
-  const authorized = bootstrap || (p.active === true && profileSector === sector && ['admin','user'].includes(role));
-  return { uid:user.uid, ...p, username:p.username || p.lastName || user.displayName || '', sector:profileSector, role, fullName:p.username || fullName(p) || user.displayName || '', isAdmin:authorized && (role === 'admin' || bootstrap), authorized, bootstrapAdmin:bootstrap };
+  const moderator = p.active === true && p.role === 'moderator' && p.sector === 'both';
+  const authorized = bootstrap || moderator || (p.active === true && profileSector === sector && ['admin','user'].includes(role));
+  return { uid:user.uid, ...p, username:p.username || p.lastName || user.displayName || '', sector:profileSector, role, fullName:p.username || fullName(p) || user.displayName || '', isAdmin:authorized && (role === 'admin' || bootstrap), isModerator:moderator, authorized, bootstrapAdmin:bootstrap };
 }
 
 export async function loginSector(username, password, sector) {
   sector = normalizeSector(sector);
   const normalized = normalizeUsername(username);
   const legacyAlias = ['infra_lvn','infra-lvn','hcc_lvn','hcc-lvn','infra','hcc','admin','administrateur','administrateur infra','administrateur hcc'].includes(normalized);
-  const email = legacyAlias ? ADMIN_AUTH_EMAIL : technicalAuthEmail(normalized, sector);
+  const email = legacyAlias ? ADMIN_AUTH_EMAIL : (normalized === 'moderateur' || normalized === 'modérateur' ? technicalAuthEmail('moderateur', 'both') : technicalAuthEmail(normalized, sector));
   const { auth, authMod } = await getFirebase();
   const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
   const profile = await getCurrentSectorUser(sector);
@@ -466,18 +467,21 @@ export async function listSectorUsers(sector) {
     .sort((a,b) => (a.username || '').localeCompare(b.username || '', 'fr'));
 }
 
-export async function createSectorUser({ username, initialPassword, sector }) {
+export async function createSectorUser({ username, initialPassword, sector, role = 'user' }) {
   sector = normalizeSector(sector);
   const current = await getCurrentSectorUser(sector);
   if (!current?.isAdmin) throw new Error('Accès administrateur requis.');
+  if (role === 'moderator' && !current.bootstrapAdmin) throw new Error('Seul le compte administrateur principal peut créer un modérateur transversal.');
+  if (!['user','moderator'].includes(role)) throw new Error('Rôle non autorisé.');
   const display = String(username || '').trim();
   const key = usernameKey(display);
   const password = String(initialPassword || '');
   if (!key) throw new Error('Le nom d’utilisateur est obligatoire.');
   if (password.length < 8) throw new Error('Le mot de passe initial doit contenir au moins 8 caractères.');
-  const authEmail = technicalAuthEmail(key, sector);
+  const accountSector = role === 'moderator' ? 'both' : sector;
+  const authEmail = technicalAuthEmail(key, accountSector);
   const { db, fsMod, appMod, authMod } = await getFirebase();
-  const existing = await fsMod.getDocs(fsMod.query(fsMod.collection(db,'users'), fsMod.where('sector','==',sector)));
+  const existing = await fsMod.getDocs(fsMod.query(fsMod.collection(db,'users'), fsMod.where('sector','==',accountSector)));
   if (existing.docs.some(d => usernameKey(d.data().username || d.data().lastName)===key)) throw new Error('Ce nom d’utilisateur existe déjà dans ce secteur.');
   const secondaryApp = appMod.initializeApp(firebaseConfig, `sector-create-${uid()}`);
   const secondaryAuth = authMod.getAuth(secondaryApp);
@@ -487,11 +491,11 @@ export async function createSectorUser({ username, initialPassword, sector }) {
     createdUser=credential.user;
     await authMod.updateProfile(createdUser,{displayName:display});
     await fsMod.setDoc(fsMod.doc(db,'users',createdUser.uid),{
-      username:display, usernameKey:key, sector, role:'user', active:true,
+      username:display, usernameKey:key, sector:accountSector, role, active:true,
       authEmail, createdAt:fsMod.serverTimestamp(), updatedAt:fsMod.serverTimestamp(), createdByUid:current.uid
     });
     profileCreated=true;
-    return { uid:createdUser.uid, username:display, sector, role:'user', active:true, fullName:display };
+    return { uid:createdUser.uid, username:display, sector:accountSector, role, active:true, fullName:display };
   } catch(error) {
     if (createdUser && !profileCreated) { try { await authMod.deleteUser(createdUser); } catch {} }
     throw error;
