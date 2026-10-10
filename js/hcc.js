@@ -3,9 +3,9 @@ import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261
 import {
   getAppMode, hasSectorSession, loginSector, logoutInfra, getCurrentSectorUser, subscribeCurrentSectorProfile,
   changeInfraPassword, listSectorUsers, createSectorUser,
-  setSectorUserActive,
+  setSectorUserActive, deleteSectorUser,
   createHccRequest
-} from './store.js?v=20261010-sector-admins-1';
+} from './store.js?v=20261010-staff-delete-1';
 import { subscribeHccRequests, updateHccRequest, deleteHccRequest, syncHccRoomStatuses } from './hcc-store.js?v=20261008-hcc-admin-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
@@ -531,7 +531,8 @@ async function openUsersModal() {
   try {
     const users = await listSectorUsers('hcc');
     modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service HCC uniquement.</div></div><button class="icon-btn" data-close>×</button></div>
-      <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'HCC'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}</div></article>`).join('')}</div>
+      <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'HCC'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}${u.storedRole === 'user' && u.uid !== currentUser?.uid ? `<button class="danger account-delete" type="button" data-id="${escapeHtml(u.uid)}">Supprimer</button>` : ''}</div></article>`).join('')}</div>
+      <p class="help">Supprimer efface le profil : le membre disparaît de la liste et perd tout accès aux données. Le login Firebase Auth orphelin ne peut pas être supprimé depuis l’application et n’a plus aucun accès.</p>
       <form id="create-user-form" class="account-create"><h3>Ajouter un membre HCC</h3><div class="form-grid">
         <div class="field full"><label>Nom de famille / nom d’utilisateur *</label><input name="username" required maxlength="60" autocomplete="off"></div>
         <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
@@ -541,10 +542,18 @@ async function openUsersModal() {
       try { await setSectorUserActive(button.dataset.id,activate,'hcc'); toast(activate?'Accès réactivé.':'Accès révoqué.'); closeModal(); await openUsersModal(); }
       catch(err){ button.disabled=false; toast(err.message||'Modification impossible.'); }
     }));
+    els.modalRoot.querySelectorAll('.account-delete').forEach(button => button.addEventListener('click', async () => {
+      const user = users.find(item => item.uid === button.dataset.id);
+      const name = user?.username || 'cet utilisateur';
+      if (!confirm(`Supprimer le compte de ${name} ? Ce membre disparaîtra de la liste et n’aura plus aucun accès aux données.`)) return;
+      button.disabled = true;
+      try { await deleteSectorUser(button.dataset.id, 'hcc'); toast(`Compte de ${name} supprimé.`); closeModal(); await openUsersModal(); }
+      catch(err){ button.disabled=false; toast(err.message||'Suppression impossible.'); }
+    }));
     $('#create-user-form').addEventListener('submit', async e => {
       e.preventDefault(); const fd=new FormData(e.currentTarget); const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
       try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const created=await createSectorUser({username,initialPassword,sector:'hcc'}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
-      catch(err){ button.disabled=false; toast(err?.code==='auth/email-already-in-use'?'Ce nom d’utilisateur existe déjà.':(err.message||'Création impossible.')); }
+      catch(err){ button.disabled=false; toast(err?.code==='auth/email-already-in-use'?'Ce nom d’utilisateur ne peut pas être réutilisé : un ancien compte de connexion existe encore. Ce login orphelin n’a plus aucun accès aux données. Choisissez un autre nom.':(err.message||'Création impossible.')); }
     });
   } catch(err){ toast(err.message||'Impossible de charger les comptes.'); }
 }

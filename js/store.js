@@ -385,6 +385,18 @@ function technicalAuthEmail(username, sector) {
   if (!key) throw new Error('Nom d’utilisateur invalide.');
   return `${key}.${sector}@lvn.local`;
 }
+
+// Suppression d'un autre compte Firebase Authentication impossible côté client
+// (plan Spark, sans Cloud Functions). Le profil Firestore est la barrière
+// d'accès : sans users/{uid}, les règles refusent les données. Le login Auth
+// orphelin peut rester, mais il n'a plus aucun accès.
+const AUTH_EMAIL_REUSE_MESSAGE = 'Ce nom d’utilisateur ne peut pas être réutilisé : un ancien compte de connexion existe encore. Ce login orphelin n’a plus aucun accès aux données. Choisissez un autre nom.';
+
+function authEmailReuseError() {
+  const error = new Error(AUTH_EMAIL_REUSE_MESSAGE);
+  error.code = 'auth/email-already-in-use';
+  return error;
+}
 function normalizeSector(value) {
   const sector = String(value || '').trim().toLowerCase();
   if (!['infra', 'hcc'].includes(sector)) throw new Error('Secteur invalide.');
@@ -465,7 +477,7 @@ export async function listSectorUsers(sector) {
       const ps = p.sector || (p.role === 'infra' ? 'infra' : null);
       return ps === sector || (current.bootstrapAdmin && (ps === 'both' || (p.email === ADMIN_AUTH_EMAIL && sector === 'infra')));
     })
-    .map(p => ({ ...p, role:p.role === 'infra' ? 'user' : p.role, username:p.username || p.lastName || '', fullName:p.username || fullName(p) || 'Utilisateur', isAdmin:p.role === 'admin' }))
+    .map(p => ({ ...p, storedRole:p.role, role:p.role === 'infra' ? 'user' : p.role, username:p.username || p.lastName || '', fullName:p.username || fullName(p) || 'Utilisateur', isAdmin:p.role === 'admin' }))
     .sort((a,b) => (a.username || '').localeCompare(b.username || '', 'fr'));
 }
 
@@ -501,6 +513,7 @@ export async function createSectorUser({ username, initialPassword, sector, role
     return { uid:createdUser.uid, username:display, sector:accountSector, role, active:true, fullName:display };
   } catch(error) {
     if (createdUser && !profileCreated) { try { await authMod.deleteUser(createdUser); } catch {} }
+    if (error?.code === 'auth/email-already-in-use') throw authEmailReuseError();
     throw error;
   } finally {
     try { await authMod.signOut(secondaryAuth); } catch {}
@@ -519,6 +532,36 @@ export async function setSectorUserActive(userId, active, sector) {
   const p=snap.data(), ps=p.sector || (p.role==='infra'?'infra':null);
   if (ps !== sector && !(current.bootstrapAdmin && ps === 'both')) throw new Error('Compte hors de votre secteur.');
   await fsMod.updateDoc(ref,{active:!!active,updatedAt:fsMod.serverTimestamp()});
+}
+
+export async function deleteSectorUser(userId, sector) {
+  sector = normalizeSector(sector);
+  if (APP_MODE === 'demo') throw new Error('Suppression indisponible en mode démo.');
+  const current = await getCurrentSectorUser(sector);
+  if (!current?.authorized || current.role !== 'admin' || current.active !== true || !['infra', 'hcc'].includes(current.sector) || current.sector !== sector) {
+    throw new Error('Accès administrateur requis.');
+  }
+  if (!userId || userId === current.uid) throw new Error('Vous ne pouvez pas supprimer votre propre compte.');
+  const { db, fsMod } = await getFirebase();
+  const ref = fsMod.doc(db, 'users', userId);
+  let snap;
+  try {
+    snap = await fsMod.getDoc(ref);
+  } catch (error) {
+    if (error?.code === 'permission-denied') throw new Error('Compte hors de votre secteur.');
+    throw error;
+  }
+  if (!snap.exists()) throw new Error('Utilisateur introuvable.');
+  const profile = snap.data();
+  const profileSector = profile.sector || (profile.role === 'infra' ? 'infra' : null);
+  if (profileSector !== sector) throw new Error('Compte hors de votre secteur.');
+  if (profile.role !== 'user') throw new Error('Seuls les comptes utilisateurs peuvent être supprimés.');
+  try {
+    await fsMod.deleteDoc(ref);
+  } catch (error) {
+    if (error?.code === 'permission-denied') throw new Error('Suppression refusée.');
+    throw error;
+  }
 }
 
 

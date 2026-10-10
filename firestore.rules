@@ -166,7 +166,15 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active','updatedAt']))
         );
 
-      allow delete: if false;
+      // Profil users/{uid} uniquement : un administrateur de service actif
+      // (rôle admin, secteur infra ou hcc). L'exception historique
+      // lolo.dalzotto@gmail.com n'est pas un chemin de suppression.
+      // Cible : role == 'user', même secteur, jamais soi-même.
+      // Les administrateurs et les modérateurs ne sont pas supprimables.
+      allow delete: if isServiceAdmin()
+        && uid != request.auth.uid
+        && resource.data.role == 'user'
+        && resource.data.get('sector', '') == profileSector();
     }
 
     match /room_status/{roomId} {
