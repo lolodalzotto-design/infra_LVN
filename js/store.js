@@ -418,9 +418,10 @@ export async function getCurrentSectorUser(sector, { bootstrapAdmin = true } = {
 export async function loginSector(username, password, sector) {
   sector = normalizeSector(sector);
   const normalized = normalizeUsername(username);
-  const legacyAlias = ['infra_lvn','infra-lvn','hcc_lvn','hcc-lvn','infra','hcc','admin','administrateur','administrateur infra','administrateur hcc'].includes(normalized);
+  // Plus aucun alias ne pointe vers le compte historique : il se connecte avec son e-mail complet.
+  const directEmail = normalized.includes('@');
   const moderatorLogin = ['admin-lvn', 'moderateur', 'modérateur'].includes(normalized);
-  const email = legacyAlias ? ADMIN_AUTH_EMAIL : technicalAuthEmail(normalized, moderatorLogin ? 'both' : sector);
+  const email = directEmail ? normalizeEmail(username) : technicalAuthEmail(normalized, moderatorLogin ? 'both' : sector);
   const { auth, authMod } = await getFirebase();
   const credential = await authMod.signInWithEmailAndPassword(auth, email, password);
   const profile = await getCurrentSectorUser(sector);

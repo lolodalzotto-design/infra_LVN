@@ -44,6 +44,11 @@ service cloud.firestore {
       return isBootstrapAdmin()
         || (hasProfile() && profile().active == true && profileSector() == sector && normalizedRole() == 'admin');
     }
+    // Administrateur cloisonné à un seul secteur (jamais 'both', jamais l'exception historique).
+    function isServiceAdmin() {
+      return hasProfile() && profile().active == true && normalizedRole() == 'admin'
+        && profileSector() in ['infra','hcc'];
+    }
     function isInfra() { return isSector('infra'); }
     function isHcc() { return isSector('hcc'); }
     function isAdmin() { return isBootstrapAdmin() || (hasProfile() && profile().active == true && normalizedRole() == 'admin'); }
@@ -136,27 +141,29 @@ service cloud.firestore {
       allow read: if isPasswordUser() && (
         request.auth.uid == uid
         || isBootstrapAdmin()
-        || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
-            && resource.data.sector == profileSector())
+        || (isServiceAdmin() && resource.data.get('sector', '') == profileSector())
       );
 
       allow create: if validUserProfile(uid) && (
         (uid == request.auth.uid && isBootstrapAdmin())
         || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc','both'])
-        || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
+        || (isServiceAdmin()
             && request.resource.data.sector == profileSector()
-            && request.resource.data.role == 'user')
+            && request.resource.data.role == 'user'
+            && request.resource.data.createdByUid == request.auth.uid
+            && request.resource.data.authEmail is string
+            && request.resource.data.authEmail.matches('^[a-z0-9._-]+[.]' + profileSector() + '@lvn[.]local$'))
       );
 
       allow update: if validUserProfile(uid)
         && (
           isBootstrapAdmin()
-          || (hasProfile() && profile().active == true && normalizedRole() == 'admin'
-              && resource.data.sector == profileSector()
-              && request.resource.data.sector == resource.data.sector
-              && request.resource.data.role == resource.data.role
-              && request.resource.data.username == resource.data.username
-              && request.resource.data.authEmail == resource.data.authEmail)
+          // Administrateur de service : uniquement activer/désactiver un compte "user" de son secteur.
+          || (isServiceAdmin()
+              && uid != request.auth.uid
+              && resource.data.get('sector', '') == profileSector()
+              && resource.data.role == 'user'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active','updatedAt']))
         );
 
       allow delete: if false;

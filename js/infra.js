@@ -5,7 +5,7 @@ import {
   changeInfraPassword, listSectorUsers, createSectorUser,
   setSectorUserActive,
   subscribeAnomalies, syncRoomStatuses, updateAnomaly, createAnomaly, deleteAnomaly, resetDemoData
-} from './store.js?v=20261009-admin-lvn-1';
+} from './store.js?v=20261010-sector-admins-1';
 
 // Alias d’affichage uniquement. Comparaison : trim, puis toLowerCase()
 // (« Infra_LVN » et « infra_lvn » sont acceptés). Toute autre valeur est refusée
