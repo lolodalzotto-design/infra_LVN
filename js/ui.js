@@ -270,6 +270,13 @@ function enablePlanNavigation(container, svg, {
     }
   });
 
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && container.classList.contains('plan-fullscreen-fallback')) {
+      container.classList.remove('plan-fullscreen-fallback');
+      document.body.classList.remove('plan-fullscreen-body');
+      syncFullscreenButton();
+    }
+  });
   document.addEventListener('fullscreenchange', syncFullscreenButton);
   document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
@@ -483,6 +490,20 @@ function enablePlanNavigation(container, svg, {
   container.appendChild(controls);
   applyView();
   syncFullscreenButton();
+}
+
+// Quitte proprement le plein écran (natif ou repli iOS) avant de détruire un plan :
+// sinon le body reste bloqué en overflow:hidden et la page ne défile plus.
+export function exitPlanFullscreen() {
+  document.querySelectorAll('.plan-fullscreen-fallback').forEach((n) => n.classList.remove('plan-fullscreen-fallback'));
+  document.body.classList.remove('plan-fullscreen-body');
+  const nativeEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (nativeEl) {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch {}
+  }
 }
 
 export function renderPlan(container, buildingId, levelId, {

@@ -900,3 +900,9 @@ body.plan-fullscreen-body { overflow:hidden; }
   font-size:.79rem;
   line-height:1.4;
 }
+
+/* Confirmation d'envoi du signalement */
+.submit-status { margin:12px auto;padding:14px 16px;border-radius:12px;font-weight:700;line-height:1.35;max-width:960px; }
+.submit-status-ok { background:#e7f6ec;color:#1d6b3a;border:1px solid #9fd5b1; }
+.submit-status-error { background:#fdecec;color:#9b1c1c;border:1px solid #f1a7a7; }
+.submit-status[hidden] { display:none; }

@@ -1,5 +1,5 @@
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261008-infra-room-tap-3';
+import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261012-fsfix-1';
 import {
   getAppMode, hasSectorSession, loginSector, logoutInfra, getCurrentSectorUser, subscribeCurrentSectorProfile,
   changeInfraPassword, listSectorUsers, createSectorUser,

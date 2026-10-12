@@ -1,6 +1,6 @@
 window.__infraLvnBoot = true;
 import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-refplan-1';
-import { renderPlan } from './ui.js?v=20261007-refplan-1';
+import { renderPlan, exitPlanFullscreen } from './ui.js?v=20261012-fsfix-1';
 import { createAnomaly, createHccRequest, preparePublicSession } from './store.js?v=20261008-sector-1';
 
 let selectedReportType = null;
@@ -41,6 +41,22 @@ function toast(message) {
   node.textContent = message;
   document.body.appendChild(node);
   setTimeout(() => node.remove(), 3400);
+}
+
+function showSubmitStatus(message, ok) {
+  let box = document.querySelector('#submit-status');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'submit-status';
+    box.setAttribute('aria-live', 'polite');
+    (document.querySelector('main') || document.body).prepend(box);
+  }
+  box.setAttribute('role', ok ? 'status' : 'alert');
+  box.className = `submit-status ${ok ? 'submit-status-ok' : 'submit-status-error'}`;
+  box.textContent = message;
+  box.hidden = false;
+  clearTimeout(box.__timer);
+  box.__timer = setTimeout(() => { box.hidden = true; }, ok ? 12000 : 20000);
 }
 
 function currentBuilding() {
@@ -161,6 +177,8 @@ function selectRoom(room) {
 
   configureReportForm();
   els.formCard.classList.remove('hidden');
+  // Le plan est reconstruit : sortir du plein écran avant, sinon page bloquée (iPhone).
+  exitPlanFullscreen();
   renderCurrentPlan();
   setTimeout(() => els.formCard.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
 }
@@ -259,6 +277,7 @@ els.form.addEventListener('submit', async (event) => {
   if (!firstName || !lastName || !description) return toast('Nom, prénom et description sont nécessaires.');
   if (description.length > 240) return toast('La description doit rester courte (240 caractères maximum).');
 
+  exitPlanFullscreen();
   els.submit.disabled = true;
   els.submit.textContent = 'Envoi…';
   try {
@@ -294,11 +313,15 @@ els.form.addEventListener('submit', async (event) => {
     selectedRoom = null;
     els.formCard.classList.add('hidden');
     renderCurrentPlan();
-    toast(`${selectedReportType === 'hcc' ? 'Remontée HCC enregistrée' : 'Signalement enregistré'} — ${doneRoom}`);
+    const okMsg = `✅ ${selectedReportType === 'hcc' ? 'Votre remontée HCC a bien été reçue' : 'Votre signalement a bien été reçu'} — ${doneRoom}. Merci, il sera traité par le service.`;
+    showSubmitStatus(okMsg, true);
+    toast(okMsg);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (error) {
     console.error(error);
-    toast(`Impossible d’enregistrer : ${error.message || 'erreur inconnue'}`);
+    const errMsg = `❌ Le signalement n’a pas pu être envoyé (${error.message || 'erreur inconnue'}). Vérifiez votre connexion et réessayez.`;
+    showSubmitStatus(errMsg, false);
+    toast(errMsg);
   } finally {
     els.submit.disabled = false;
     configureReportForm();
