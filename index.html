@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Infra-LVN" />
   <meta name="description" content="Suivi Infra de la caserne" />
   <title>Infra-LVN</title>
-  <link rel="stylesheet" href="./styles.css?v=20261012-fsfix-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261012-fsfix-2" />
 </head>
 <body>
 <main>
@@ -109,7 +109,7 @@
   </script>
   <div id="load-error" role="alert" style="color:#a00;font-weight:700;padding:0 16px"></div>
   <script type="module">
-    import('./js/public.js?v=20261012-fsfix-1').catch((error) => {
+    import('./js/public.js?v=20261012-fsfix-2').catch((error) => {
       console.error('Erreur de démarrage Infra-LVN', error);
       document.getElementById('load-error').textContent =
         'Erreur de démarrage : ' + (error?.message || 'chargement impossible') + '. Rechargez la page.';

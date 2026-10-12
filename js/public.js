@@ -1,6 +1,6 @@
 window.__infraLvnBoot = true;
 import { PLAN_CONFIG, classifyCategory } from './data.js?v=20261007-refplan-1';
-import { renderPlan, exitPlanFullscreen } from './ui.js?v=20261012-fsfix-1';
+import { renderPlan, exitPlanFullscreen } from './ui.js?v=20261012-fsfix-2';
 import { createAnomaly, createHccRequest, preparePublicSession } from './store.js?v=20261008-sector-1';
 
 let selectedReportType = null;
