@@ -1,5 +1,5 @@
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
-import { renderPlan, statusBadge, formatDate, escapeHtml } from './ui.js?v=20261012-fsfix-2';
+import { renderPlan, statusBadge, formatDate, escapeHtml, showServiceModal } from './ui.js?v=20261015-room-popup-1';
 import {
   getAppMode, hasSectorSession, loginSector, logoutInfra, getCurrentSectorUser, subscribeCurrentSectorProfile,
   changeInfraPassword, listSectorUsers, createSectorUser,
@@ -450,12 +450,12 @@ function renderAll() {
 }
 
 function modal(content) {
-  els.modalRoot.innerHTML = `<div class="modal-backdrop"><section class="modal">${content}</section></div>`;
-  const backdrop = els.modalRoot.querySelector('.modal-backdrop');
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
-  els.modalRoot.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
+  showServiceModal(els.modalRoot, content, closeModal);
 }
-function closeModal() { els.modalRoot.innerHTML = ''; }
+function closeModal() {
+  els.modalRoot.querySelector('dialog')?.close();
+  els.modalRoot.innerHTML = '';
+}
 
 function openOverviewRoom(roomId) {
   const room = getRoom(roomId);
@@ -560,10 +560,10 @@ async function openUsersModal() {
 
 function openRoomModal(roomId) {
   const room = getRoom(roomId); const rows = anomalies
-    .filter(a => a.roomId === roomId)
+    .filter(a => a.roomId === roomId && a.status !== 'resolu')
     .sort((a, b) => anomalyCreatedMs(b.createdAt) - anomalyCreatedMs(a.createdAt));
-  modal(`<div class="modal-head"><div><h2>${escapeHtml(room.name)}</h2><div class="help">${escapeHtml(room.buildingLabel)} • ${escapeHtml(room.levelLabel)}</div></div><button class="icon-btn" data-close>×</button></div>
-    ${rows.length ? `<div class="room-popup-list">${rows.map(a=>`<article class="anomaly-card ${a.urgent?'urgent':''}"><div class="anomaly-top"><strong>${a.urgent?'🚨 ':''}${escapeHtml(a.description)}</strong>${statusBadge(a.status)}</div><div class="anomaly-meta"><span>${escapeHtml(a.category)}</span><span>${formatDate(a.createdAt)}</span></div><div class="submit-row" style="margin-top:8px"><button type="button" class="secondary room-open" data-id="${a.id}">Détail</button></div></article>`).join('')}</div>` : '<div class="empty">Aucune anomalie déclarée dans cette pièce.</div>'}
+  modal(`<div class="modal-head"><div><h2>${escapeHtml(room.name)}</h2><div class="help">${escapeHtml(room.buildingLabel)} • ${escapeHtml(room.levelLabel)} • ${rows.length} anomalie${rows.length > 1 ? 's' : ''} active${rows.length > 1 ? 's' : ''}</div></div><button class="icon-btn" data-close>×</button></div>
+    ${rows.length ? `<div class="room-popup-list">${rows.map(a=>`<article class="anomaly-card ${a.urgent?'urgent':''}"><div class="anomaly-top"><strong>${a.urgent?'🚨 ':''}${escapeHtml(a.description)}</strong>${statusBadge(a.status)}</div><div class="anomaly-meta"><span>${escapeHtml(a.category)}</span><span>${formatDate(a.createdAt)}</span></div><div class="submit-row" style="margin-top:8px"><button type="button" class="secondary room-open" data-id="${a.id}">Détail</button></div></article>`).join('')}</div>` : '<div class="empty">Aucune anomalie en cours dans cette pièce.</div>'}
     <div class="submit-row"><button type="button" class="primary" id="room-add">+ Ajouter une anomalie ici</button></div>`);
   $('#room-add').addEventListener('click', () => openCreateModal(roomId));
   els.modalRoot.querySelectorAll('.room-open').forEach(b => b.addEventListener('click', () => openAnomalyModal(b.dataset.id)));
@@ -710,3 +710,4 @@ async function init() {
 }
 
 init();
+

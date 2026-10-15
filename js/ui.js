@@ -291,7 +291,8 @@ function enablePlanNavigation(container, svg, {
   svg.addEventListener('pointerdown', (event) => {
     if (!isPlanFullscreen() || (nativeTouch && event.pointerType === 'touch')) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    svg.setPointerCapture?.(event.pointerId);
+    // Garder la pièce comme cible du clic après relâchement de la souris.
+    event.target.setPointerCapture?.(event.pointerId);
     moved = false;
 
     if (pointers.size === 2) {
@@ -684,4 +685,25 @@ export function renderPlan(container, buildingId, levelId, {
 
 export function statusBadge(status) {
   return `<span class="status status-${escapeHtml(status)}">${STATUS_LABELS[status] || escapeHtml(status)}</span>`;
+}
+
+
+// Le dialogue natif reste au-dessus du plan, y compris dans le plein écran
+// du navigateur et dans le repli CSS mobile. Il conserve le zoom du plan.
+export function showServiceModal(root, content, onClose) {
+  root.querySelector('dialog')?.close();
+  root.innerHTML = `<dialog class="modal-backdrop service-dialog" aria-label="Suivi des anomalies"><section class="modal">${content}</section></dialog>`;
+  const dialog = root.querySelector('dialog');
+  dialog.addEventListener('click', event => {
+    if (event.target === dialog) onClose();
+  });
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    onClose();
+  });
+  dialog.addEventListener('keydown', event => {
+    if (event.key === 'Escape') event.stopPropagation();
+  });
+  root.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', onClose));
+  dialog.showModal();
 }
