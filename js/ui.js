@@ -245,6 +245,7 @@ function enablePlanNavigation(container, svg, {
     fullscreenBtn.textContent = active ? '✕' : '⛶';
     fullscreenBtn.setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Plein écran');
     fullscreenBtn.setAttribute('title', active ? 'Quitter le plein écran' : 'Plein écran');
+    document.dispatchEvent(new Event('planfullscreenchange'));
   };
 
   fullscreenBtn.addEventListener('click', async (event) => {
@@ -674,6 +675,9 @@ export function renderPlan(container, buildingId, levelId, {
     scene.appendChild(group);
   });
 
+  // Une actualisation des anomalies ne doit pas supprimer la fenêtre ouverte.
+  const modalRoot = document.getElementById('modal-root');
+  if (modalRoot && container.contains(modalRoot)) moveServiceModal(modalRoot, document.body);
   container.replaceChildren(svg);
   enablePlanNavigation(container, svg, {
     allowRotation: gestureEnabled,
@@ -688,10 +692,41 @@ export function statusBadge(status) {
 }
 
 
-// Le dialogue natif reste au-dessus du plan, y compris dans le plein écran
-// du navigateur et dans le repli CSS mobile. Il conserve le zoom du plan.
+// Héberger la fenêtre DANS l'élément plein écran : certains navigateurs
+// masquent les dialogues restés ailleurs dans le document, même avec showModal.
+function moveServiceModal(root, host) {
+  if (!host || root.parentNode === host || root.contains(host)) return;
+  const dialog = root.querySelector('dialog');
+  const wasOpen = dialog?.open;
+  if (wasOpen) dialog.close();
+  host.appendChild(root);
+  if (wasOpen) {
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+}
+
+export function closeServiceModal(root) {
+  root.__serviceModalCleanup?.();
+  root.__serviceModalCleanup = null;
+  root.querySelector('dialog')?.close?.();
+  root.replaceChildren();
+  const home = root.__serviceModalHome;
+  if (home) {
+    moveServiceModal(root, home.isConnected ? home : document.body);
+    root.__serviceModalHome = null;
+  }
+}
+
 export function showServiceModal(root, content, onClose) {
-  root.querySelector('dialog')?.close();
+  closeServiceModal(root);
+  root.__serviceModalHome = root.parentNode || document.body;
+  const syncHost = () => {
+    const host = document.fullscreenElement || document.webkitFullscreenElement
+      || document.querySelector('.plan-fullscreen-fallback') || root.__serviceModalHome;
+    moveServiceModal(root, host);
+  };
+  syncHost();
   root.innerHTML = `<dialog class="modal-backdrop service-dialog" aria-label="Suivi des anomalies"><section class="modal">${content}</section></dialog>`;
   const dialog = root.querySelector('dialog');
   dialog.addEventListener('click', event => {
@@ -702,8 +737,16 @@ export function showServiceModal(root, content, onClose) {
     onClose();
   });
   dialog.addEventListener('keydown', event => {
-    if (event.key === 'Escape') event.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    }
   });
   root.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', onClose));
-  dialog.showModal();
+  const events = ['fullscreenchange', 'webkitfullscreenchange', 'planfullscreenchange'];
+  events.forEach(name => document.addEventListener(name, syncHost));
+  root.__serviceModalCleanup = () => events.forEach(name => document.removeEventListener(name, syncHost));
+  if (dialog.showModal) dialog.showModal();
+  else dialog.setAttribute('open', '');
 }
