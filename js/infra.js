@@ -1,5 +1,5 @@
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
-import { renderPlan, statusBadge, formatDate, escapeHtml, showServiceModal, closeServiceModal } from './ui.js?v=20261015-room-popup-2';
+import { renderPlan, statusBadge, formatDate, escapeHtml, showServiceModal, closeServiceModal } from './ui.js?v=20261019-pwd-toggle-1';
 import {
   getAppMode, hasSectorSession, loginSector, logoutInfra, getCurrentSectorUser, subscribeCurrentSectorProfile,
   changeInfraPassword, listSectorUsers, createSectorUser,

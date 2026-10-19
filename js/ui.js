@@ -750,3 +750,70 @@ export function showServiceModal(root, content, onClose) {
   if (dialog.showModal) dialog.showModal();
   else dialog.setAttribute('open', '');
 }
+
+const PASSWORD_SHOW_LABEL = '👁 Afficher';
+const PASSWORD_HIDE_LABEL = 'Masquer';
+const PASSWORD_SHOW_ARIA = 'Afficher le mot de passe';
+const PASSWORD_HIDE_ARIA = 'Masquer le mot de passe';
+
+let passwordToggleObserver = null;
+
+function syncPasswordToggle(input, button) {
+  const visible = input.type === 'text';
+  button.textContent = visible ? PASSWORD_HIDE_LABEL : PASSWORD_SHOW_LABEL;
+  button.setAttribute('aria-label', visible ? PASSWORD_HIDE_ARIA : PASSWORD_SHOW_ARIA);
+  button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+}
+
+function enhancePasswordInput(input) {
+  if (!(input instanceof HTMLInputElement)) return;
+  if (input.dataset.passwordToggle) return;
+  if (input.closest('.password-field')) return;
+  if (input.getAttribute('type') !== 'password') return;
+  const parent = input.parentNode;
+  if (!parent) return;
+
+  input.dataset.passwordToggle = '1';
+
+  const wrap = document.createElement('span');
+  wrap.className = 'password-field';
+  parent.insertBefore(wrap, input);
+  wrap.appendChild(input);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'password-toggle';
+  button.addEventListener('mousedown', (event) => event.preventDefault());
+  button.addEventListener('click', () => {
+    input.type = input.type === 'password' ? 'text' : 'password';
+    syncPasswordToggle(input, button);
+  });
+  syncPasswordToggle(input, button);
+  wrap.appendChild(button);
+}
+
+function watchPasswordInputs() {
+  if (passwordToggleObserver || typeof MutationObserver === 'undefined') return;
+  passwordToggleObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (node.matches?.('input[type="password"]')) enhancePasswordInput(node);
+        node.querySelectorAll?.('input[type="password"]').forEach(enhancePasswordInput);
+      }
+    }
+  });
+  passwordToggleObserver.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+export function initPasswordToggles(root = document) {
+  watchPasswordInputs();
+  const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+  scope.querySelectorAll('input[type="password"]').forEach(enhancePasswordInput);
+}
+
+if (typeof document !== 'undefined') {
+  const bootPasswordToggles = () => initPasswordToggles(document);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootPasswordToggles);
+  else bootPasswordToggles();
+}
