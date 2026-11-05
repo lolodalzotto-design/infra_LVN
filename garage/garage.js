@@ -53,6 +53,7 @@ function renderMark() {
 function mark(face, u, v) {
   marks.set(selectedVehicle, {face, u, v});
   renderMark();
+  if (isFullscreen()) void exitCubeFullscreen().catch(() => fullscreenButton.focus());
 }
 function pinchState() {
   const [a, b] = touches.values();
@@ -172,14 +173,18 @@ function setFullscreenFallback(active) {
   document.body.classList.toggle('plan-fullscreen-body', active);
   syncFullscreen();
 }
-fullscreenButton.onclick = async () => {
+async function exitCubeFullscreen() {
   if (scene.classList.contains('plan-fullscreen-fallback')) {
     setFullscreenFallback(false);
-    return;
+  } else if (document.exitFullscreen) {
+    await document.exitFullscreen();
+  } else {
+    document.webkitExitFullscreen?.();
   }
+}
+fullscreenButton.onclick = async () => {
   if (isFullscreen()) {
-    if (document.exitFullscreen) await document.exitFullscreen();
-    else document.webkitExitFullscreen?.();
+    await exitCubeFullscreen();
     return;
   }
   try {
