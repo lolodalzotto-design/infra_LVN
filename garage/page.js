@@ -1,5 +1,5 @@
 import { createCcfViewer } from './ccf-viewer.js?v=20261105-report-dialog';
-import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, addReportNote, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-history';
+import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, addReportNote, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-dashboard';
 
 
 const byId = id => document.getElementById(id);
@@ -421,7 +421,9 @@ if (!agentMode) {
 
   openReportFromPin = showReport;
   const login = byId('login');
-  const topbar = byId('service-topbar');
+  const shell = byId('garage-shell');
+  const loginWrap = byId('garage-login');
+  const loginError = byId('garage-login-error');
   const menuButton = byId('service-menu-button');
   const menu = byId('service-menu');
   const sectorLinks = menu.querySelectorAll('[data-service-sector]');
@@ -445,6 +447,8 @@ if (!agentMode) {
   });
   let stopWatching;
   let visibleReports = [];
+  let allReports = [];
+  let reportsLoaded = false;
   const noteDrafts = new Map();
   const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' });
 
@@ -585,15 +589,88 @@ if (!agentMode) {
 
   function renderServicePins() {
     clearPins();
-    if (ccfActive) ccfViewer.setPins(visibleReports);
-    else visibleReports.forEach(row => addPin(cubeFace(row.face), row.u, row.v, row.status || 'reported', row.id));
+    const pins = visibleReports.filter(row => row.vehicle === serviceVehicle);
+    if (ccfActive) ccfViewer.setPins(pins);
+    else pins.forEach(row => addPin(cubeFace(row.face), row.u, row.v, row.status || 'reported', row.id));
   }
+
+  function renderDashboardKpis() {
+    const period = byId('kpi-period').value;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (period === 'week') cutoff.setDate(cutoff.getDate() - 7);
+    else if (period !== 'all') {
+      const months = {month: 1, '3months': 3, '6months': 6, year: 12}[period];
+      const day = cutoff.getDate();
+      cutoff.setDate(1);
+      cutoff.setMonth(cutoff.getMonth() - months);
+      cutoff.setDate(Math.min(day, new Date(cutoff.getFullYear(), cutoff.getMonth() + 1, 0).getDate()));
+    }
+    const rows = period === 'all' ? allReports : allReports.filter(row => {
+      const date = row.createdAt?.toMillis?.();
+      return date >= cutoff.getTime() && date <= now.getTime();
+    });
+    const open = rows.filter(row => (row.status || 'reported') === 'reported').length;
+    const progress = rows.filter(row => row.status === 'in-progress').length;
+    const resolved = rows.filter(row => row.status === 'resolved').length;
+    const pct = rows.length ? Math.round(resolved / rows.length * 100) : 0;
+    byId('kpi-total').textContent = rows.length;
+    byId('kpi-open').textContent = open;
+    byId('kpi-progress').textContent = progress;
+    byId('kpi-resolved').textContent = resolved;
+    byId('kpi-bar').style.width = pct + '%';
+    byId('kpi-percent').textContent = pct + ' % résolu';
+  }
+
+  function renderDashboardReports() {
+    if (!reportsLoaded) return;
+    const rows = serviceVehicle ? allReports.filter(row => row.vehicle === serviceVehicle)
+      : allReports.filter(row => row.status !== 'resolved');
+    visibleReports = rows;
+    renderServicePins();
+    byId('report-list-title').textContent = serviceVehicle ? 'Anomalies · ' + vehicleName(serviceVehicle) : 'Anomalies en cours';
+    serviceStatus.textContent = serviceVehicle ? rows.length + ' signalement(s)' : 'Sélectionnez un engin.';
+    list.replaceChildren(...rows.map(row => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'anomaly-card garage-report-summary';
+      button.dataset.reportId = row.id;
+      button.setAttribute('aria-haspopup', 'dialog');
+      const status = row.status || 'reported';
+      const dot = document.createElement('span');
+      dot.className = 'status-dot ' + status;
+      dot.setAttribute('aria-hidden', 'true');
+      const heading = document.createElement('div');
+      heading.className = 'anomaly-top';
+      const title = document.createElement('strong');
+      title.textContent = row.description;
+      const badge = document.createElement('span');
+      badge.textContent = reportStatuses[status];
+      heading.append(title, badge);
+      const meta = document.createElement('div');
+      meta.className = 'anomaly-meta';
+      meta.append(dot, vehicleName(row.vehicle) + ' · ' + row.face);
+      button.append(heading, meta);
+      button.addEventListener('click', () => showReport(row.id, button));
+      item.append(button);
+      return item;
+    }));
+    if (!rows.length) {
+      const empty = document.createElement('li');
+      empty.textContent = serviceVehicle ? 'Aucune anomalie pour cet engin.' : 'Aucune anomalie en cours.';
+      list.append(empty);
+    }
+    refreshReportDialog();
+  }
+
+  byId('kpi-period').addEventListener('change', renderDashboardKpis);
 
   watchServiceSession(session => {
     const signedIn = Boolean(session);
-    login.hidden = signedIn;
+    loginWrap.hidden = signedIn;
     byId('vehicles').hidden = !signedIn;
-    topbar.classList.toggle('hidden', !signedIn);
+    shell.classList.toggle('active', signedIn);
     sectorLinks.forEach(link => link.classList.toggle('hidden', !session?.generalAdmin));
     setMenuOpen(false);
     if (reportDialog.open) reportDialog.close();
@@ -604,10 +681,29 @@ if (!agentMode) {
     visibleReports = [];
     renderServicePins();
     byId('service-viewer').hidden = true;
-    byId('report-list-panel').hidden = true;
     byId('vehicle-state-editor').hidden = true;
     serviceVehicle = 0;
-    serviceStatus.textContent = signedIn ? 'Sélectionnez un engin.' : '';
+    allReports = [];
+    reportsLoaded = false;
+    document.querySelectorAll('[data-vehicle]').forEach(button => button.setAttribute('aria-pressed', 'false'));
+    renderDashboardKpis();
+    serviceStatus.textContent = signedIn ? 'Chargement…' : '';
+    if (!signedIn) return;
+    stopWatching = watchReports(null, rows => {
+      allReports = rows;
+      reportsLoaded = true;
+      renderDashboardKpis();
+      renderDashboardReports();
+    }, () => {
+      allReports = [];
+      visibleReports = [];
+      reportsLoaded = false;
+      if (reportDialog.open) reportDialog.close();
+      renderServicePins();
+      renderDashboardKpis();
+      list.replaceChildren();
+      serviceStatus.textContent = 'Lecture impossible. Vérifiez votre accès au Garage.';
+    });
   });
 
   login.addEventListener('submit', async event => {
@@ -615,10 +711,11 @@ if (!agentMode) {
     const button = login.querySelector('button');
     button.disabled = true;
     try {
+      loginError.textContent = '';
       await signIn(byId('email').value, byId('password').value);
       byId('password').value = '';
     } catch {
-      serviceStatus.textContent = 'Connexion Garage impossible.';
+      loginError.textContent = 'Connexion Garage impossible.';
     } finally {
       button.disabled = false;
     }
@@ -654,47 +751,12 @@ if (!agentMode) {
       serviceVehicle = Number(button.dataset.vehicle);
       byId('vehicle-state-editor').hidden = false;
       renderVehicleStateEditor();
-      stopWatching?.();
-      list.replaceChildren();
-      visibleReports = [];
-      if (!agentMode) renderServicePins();
-      byId('service-viewer').hidden = false;
-      byId('report-list-panel').hidden = false;
-      showVehicleModel(serviceVehicle);
-      serviceStatus.textContent = 'Chargement…';
-      stopWatching = watchReports(Number(button.dataset.vehicle), rows => {
-        serviceStatus.textContent = button.textContent + ' · ' + rows.length + ' signalement(s)';
-        visibleReports = rows;
-        if (!agentMode) renderServicePins();
-        list.replaceChildren(...rows.map(row => {
-          const item = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'garage-report-summary';
-          button.dataset.reportId = row.id;
-          button.setAttribute('aria-haspopup', 'dialog');
-          const status = row.status || 'reported';
-          const dot = document.createElement('span');
-          dot.className = 'status-dot ' + status;
-          dot.setAttribute('aria-hidden', 'true');
-          button.append(dot, row.face + ' · ' + row.description + ' · ' + reportStatuses[status]);
-          button.addEventListener('click', () => showReport(row.id, button));
-          item.append(button);
-          return item;
-        }));
-        if (!rows.length) {
-          const empty = document.createElement('li');
-          empty.textContent = 'Aucune anomalie pour cet engin.';
-          list.append(empty);
-        }
-        refreshReportDialog();
-      }, () => {
-        visibleReports = [];
-        if (reportDialog.open) reportDialog.close();
-        if (!agentMode) renderServicePins();
-        serviceStatus.textContent = 'Lecture impossible. Vérifie ton accès au Garage.';
-        list.replaceChildren();
+      document.querySelectorAll('[data-vehicle]').forEach(choice => {
+        choice.setAttribute('aria-pressed', String(choice === button));
       });
+      byId('service-viewer').hidden = false;
+      showVehicleModel(serviceVehicle);
+      renderDashboardReports();
     });
   });
 }

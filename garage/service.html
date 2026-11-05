@@ -5,9 +5,22 @@
 <title>Service Garage LVN</title>
 <meta name="apple-mobile-web-app-title" content="Garage LVN">
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=20261105-report-dialog">
+<link rel="stylesheet" href="./garage.css?v=20261105-garage-dashboard">
 <main class="garage-main garage-service-main">
-<header id="service-topbar" class="infra-topbar garage-service-topbar hidden">
+<section id="garage-login" class="login-wrap">
+  <div class="login-card">
+    <h2>Accès responsable Garage</h2>
+    <p class="help">Cet espace est réservé au service Garage.</p>
+    <form id="login">
+      <div class="field"><label for="email">Adresse e-mail</label><input type="email" id="email" required autocomplete="username"></div>
+      <div class="field"><label for="password">Mot de passe</label><input type="password" id="password" required autocomplete="current-password"></div>
+      <p id="garage-login-error" class="login-error" role="alert"></p>
+      <button class="primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+</section>
+<section id="garage-shell" class="infra-shell garage-panel">
+<header id="service-topbar" class="infra-topbar">
   <div class="infra-topbar-brand">GARAGE LVN</div>
   <div class="infra-topbar-user"></div>
   <div class="infra-topbar-actions">
@@ -24,19 +37,37 @@
     </div>
   </div>
 </header>
-<header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Service Garage</h1><div>Suivi des engins</div></header>
-<section id="service" class="form-card garage-panel">
-<details>
-<summary>Ajouter à l’écran d’accueil</summary>
-<p>Sur iPhone, ouvrez cette page dans Safari, puis touchez Partager et Sur l’écran d’accueil.</p>
-<p>Sur Android, ouvrez le menu ⋮ de Chrome, puis choisissez Ajouter à l’écran d’accueil.</p>
-</details>
-<h2>Engins du garage</h2>
-<form id="login">
-<p><label>Adresse e-mail <input type="email" id="email" required autocomplete="username"></label></p>
-<p><label>Mot de passe <input type="password" id="password" required autocomplete="current-password"></label></p>
-<button>Se connecter</button>
-</form>
+      <div class="dashboard-heading">
+        <div>
+          <h1>Tableau de bord</h1>
+        </div>
+        <div id="kpi-period-wrap" class="dashboard-heading-tools" aria-label="Période des indicateurs">
+          <label for="kpi-period">Période</label>
+          <select id="kpi-period" aria-label="Période des indicateurs">
+            <option value="all">Toute la durée</option>
+            <option value="week">Il y a 1 semaine</option>
+            <option value="month">Il y a 1 mois</option>
+            <option value="3months">Il y a 3 mois</option>
+            <option value="6months">Il y a 6 mois</option>
+            <option value="year">Il y a 1 an</option>
+          </select>
+        </div>
+      </div>
+
+      <section class="dashboard-grid">
+        <article class="kpi kpi-total"><div class="label">Anomalies totales</div><div id="kpi-total" class="value">0</div></article>
+        <article class="kpi kpi-open"><div class="label">À traiter</div><div id="kpi-open" class="value">0</div></article>
+        <article class="kpi kpi-progress"><div class="label">En cours</div><div id="kpi-progress" class="value">0</div></article>
+        <article class="kpi kpi-resolved"><div class="label">Résolues</div><div id="kpi-resolved" class="value">0</div><div class="progress"><span id="kpi-bar" style="width:0%"></span></div><div id="kpi-percent" class="help" style="margin-top:6px">0 % résolu</div></article>
+      </section>
+<section class="panel plan-visualizer-panel admin-overview">
+  <div class="panel-heading">
+    <div><h2>Visualisation des engins</h2><div class="help">Choisissez un engin pour voir ses anomalies sur le modèle.</div></div>
+    <div class="plan-status-legend" aria-label="Légende des repères">
+      <span><i class="legend-dot legend-red"></i>À traiter</span>
+      <span><i class="legend-dot legend-orange"></i>En cours</span>
+    </div>
+  </div>
 <div id="vehicles" class="segmented" hidden>
 <button class="segment-btn vehicle-state" data-vehicle="1">Engin 1</button><button class="segment-btn vehicle-state" data-vehicle="2">Engin 2</button><button class="segment-btn vehicle-state" data-vehicle="3">Engin 3</button>
 <button type="button" class="segment-btn vehicle-state" data-vehicle="4" data-state="maintenance">Engin 4</button>
@@ -51,7 +82,6 @@
 </div>
 </div>
 <p id="service-status" role="status"></p>
-<div class="garage-dashboard-grid">
 <div id="service-viewer" hidden>
 <p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
 <div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Vue de l’engin. Flèches pour tourner." style="position:relative">
@@ -70,11 +100,16 @@
 </div>
 
 </div>
-<section id="report-list-panel" class="garage-report-list" aria-labelledby="report-list-title" hidden>
-  <h3 id="report-list-title">Anomalies de l’engin</h3>
-  <ul id="reports"></ul>
 </section>
-</div>
+<section id="report-list-panel" class="panel anomaly-list-panel" aria-labelledby="report-list-title">
+  <h2 id="report-list-title">Anomalies en cours</h2>
+  <ul id="reports" class="anomaly-list garage-report-items"></ul>
+</section>
+<details>
+<summary>Ajouter à l’écran d’accueil</summary>
+<p>Sur iPhone, ouvrez cette page dans Safari, puis touchez Partager et Sur l’écran d’accueil.</p>
+<p>Sur Android, ouvrez le menu ⋮ de Chrome, puis choisissez Ajouter à l’écran d’accueil.</p>
+</details>
 </section>
 <dialog id="report-dialog" aria-labelledby="report-dialog-title">
   <div class="garage-report-dialog-header">
@@ -85,5 +120,5 @@
   <div id="report-dialog-detail"></div>
 </dialog>
 </main>
-<script type="module" src="./page.js?v=20261105-report-dialog"></script>
+<script type="module" src="./page.js?v=20261105-garage-dashboard"></script>
 </html>

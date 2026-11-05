@@ -24,13 +24,10 @@
 .garage-report-summary .status-dot { margin-right:8px; }
 .pin[data-report-id] { pointer-events:auto; cursor:pointer; }
 
-.garage-main.garage-service-main { max-width:1200px; }
-.garage-dashboard-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
-.garage-report-list { min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px; }
-.garage-report-list h3 { margin-top:0; }
-.garage-report-list ul { padding:0; margin:0; list-style:none; }
+.garage-main.garage-service-main { max-width:1180px; padding:22px 16px 64px; }
 .garage-report-summary, #report-dialog-detail { overflow-wrap:anywhere; }
 #report-dialog textarea { width:100%; }
-@media (min-width: 860px) {
-  .garage-dashboard-grid { grid-template-columns:minmax(0, 3fr) minmax(270px, 2fr); }
-}
+
+.garage-report-items { padding:0; margin:0; list-style:none; }
+.garage-main .garage-report-items li { margin:0; }
+.garage-report-summary { color:var(--navy); font:inherit; }

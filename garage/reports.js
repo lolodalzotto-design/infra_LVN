@@ -72,7 +72,8 @@ export function signOut() {
 }
 
 export function watchReports(vehicle, onReports, onError) {
-  return onSnapshot(query(serviceReports, where('vehicle', '==', vehicle)), snapshot => {
+  const reportsQuery = vehicle === null ? serviceReports : query(serviceReports, where('vehicle', '==', vehicle));
+  return onSnapshot(reportsQuery, snapshot => {
     const rows = snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }));
     rows.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
     onReports(rows);
