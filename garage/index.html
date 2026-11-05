@@ -5,22 +5,22 @@
 <title>Garage LVN</title>
 <link rel="stylesheet" href="../styles.css">
 <link rel="stylesheet" href="./garage.css">
-<main class="garage-main">
-<header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Garage</h1><div>Suivi des engins</div></header>
-<p><a href="../">Retour à Je signale</a></p>
-<section id="agent" class="form-card garage-panel">
-<h2>Déclarer une anomalie</h2>
-<div class="step-title">Quel engin est concerné ?</div>
+<main>
+<div class="step-title"><span class="step-number">1</span>Je signale</div>
+<div class="segmented" aria-label="Type de remontée">
+<a class="segment-btn" href="../?type=infra" style="text-align:center;text-decoration:none">INFRA</a>
+<a class="segment-btn" href="../?type=hcc" style="text-align:center;text-decoration:none">HCC</a>
+<a class="segment-btn active" href="./" aria-current="page" style="text-align:center;text-decoration:none">GARAGE</a>
+</div>
+<section id="agent" class="progressive-step garage-panel">
 <div class="segmented" aria-label="Choix de l’engin">
 <button type="button" class="segment-btn" data-agent-vehicle="1" aria-pressed="false">Engin 1</button>
 <button type="button" class="segment-btn" data-agent-vehicle="2" aria-pressed="false">Engin 2</button>
 <button type="button" class="segment-btn" data-agent-vehicle="3" aria-pressed="false">Engin 3</button>
 </div>
 <div id="agent-detail" hidden>
-<h3 id="vehicle-title"></h3>
 <div id="agent-viewer"><div id="viewer">
-<p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
-<div class="scene plan-navigable" id="scene" style="position:relative">
+<div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Cube de l’engin. Flèches pour tourner, Entrée pour marquer la face visible." style="position:relative">
 <div class="cube" id="cube"></div>
 <div class="plan-nav-controls" aria-label="Zoom et plein écran">
 <button type="button" id="zoom-in" aria-label="Zoomer">+</button>
@@ -30,35 +30,33 @@
 </div>
 </div>
 <div class="controls" aria-label="Orientation et zoom du cube">
-<button class="segment-btn" data-turn="left" aria-label="Tourner à gauche">←</button><button class="segment-btn" data-turn="right" aria-label="Tourner à droite">→</button><button class="segment-btn" data-turn="up" aria-label="Tourner vers le haut">↑</button><button class="segment-btn" data-turn="down" aria-label="Tourner vers le bas">↓</button>
-<button class="segment-btn" id="center">Marquer la face visible</button><button class="segment-btn" id="clear">Effacer le repère</button>
+<button class="segment-btn" id="clear">Effacer le repère</button>
 </div>
 </div></div>
-<p>En plein écran, touche le point d’impact pour le valider et revenir au formulaire.</p>
-<output id="status" aria-live="polite">Aucun repère posé.</output>
+<output id="status" aria-live="polite" hidden></output>
 <form id="report">
-<p><label for="description">Décris l’anomalie</label></p>
+<div class="field">
+<label for="description">Décris l’anomalie</label>
 <textarea id="description" required maxlength="240" rows="3"></textarea>
+</div>
 <fieldset>
 <legend>Dysfonctionnement ?</legend>
 <label><input type="radio" name="malfunction" value="yes" required> Oui</label>
 <label><input type="radio" name="malfunction" value="no"> Non</label>
 </fieldset>
-<div id="actions-field" hidden>
-<p><label for="actions-taken">Quelles actions as-tu menées ?</label></p>
+<div id="actions-field" class="field" hidden>
+<label for="actions-taken">Quelles actions as-tu menées ?</label>
 <textarea id="actions-taken" maxlength="240" rows="3" disabled></textarea>
 </div>
-<fieldset>
-<legend>Photo (facultative)</legend>
-<p><label for="photo-camera">Prendre une photo</label><br><input type="file" id="photo-camera" accept="image/*" capture="environment"></p>
-<p><label for="photo-file">Choisir une photo</label><br><input type="file" id="photo-file" accept="image/*"></p>
-<p class="help">Une seule photo, de moins de 8 Mo.</p>
-</fieldset>
+<div class="field">
+<label for="photo-file">Pièce jointe</label>
+<input type="file" id="photo-file" accept="image/*">
+</div>
 <p><button class="primary" type="submit">Envoyer au Garage</button></p>
 </form>
 <output id="report-result" aria-live="polite"></output>
 </div>
 </section>
 </main>
-<script type="module" src="./page.js?v=3"></script>
+<script type="module" src="./page.js?v=4"></script>
 </html>
