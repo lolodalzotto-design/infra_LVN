@@ -113,10 +113,25 @@ document.querySelectorAll('[data-turn]').forEach(button => button.onclick = () =
   y += delta[1];
   rotate();
 });
-byId('center')?.addEventListener('click', () => {
+function markCenter() {
   const box = scene.getBoundingClientRect();
   const face = document.elementFromPoint(box.left + box.width/2, box.top + box.height/2);
   if (face?.classList.contains('face')) mark(face,50,50);
+}
+byId('center')?.addEventListener('click', markCenter);
+scene.addEventListener('keydown', event => {
+  if (event.target !== scene) return;
+  if (event.key === 'Enter' && agentMode) {
+    event.preventDefault();
+    markCenter();
+    return;
+  }
+  const delta = {ArrowLeft:[0,-45],ArrowRight:[0,45],ArrowUp:[-45,0],ArrowDown:[45,0]}[event.key];
+  if (!delta) return;
+  event.preventDefault();
+  x += delta[0];
+  y += delta[1];
+  rotate();
 });
 byId('clear')?.addEventListener('click', () => {
   marks.delete(selectedVehicle);
@@ -212,7 +227,6 @@ document.querySelectorAll('[data-agent-vehicle]').forEach(button => {
       choice.setAttribute('aria-pressed', String(choice === button));
     });
     byId('agent-detail').hidden = false;
-    byId('vehicle-title').textContent = button.textContent;
     renderMark();
   });
 });
@@ -231,17 +245,13 @@ report?.addEventListener('change', event => {
 });
 if (report) {
   syncActionsField();
-  const camera = byId('photo-camera');
-  const library = byId('photo-file');
-  camera.addEventListener('change', () => { if (camera.files.length) library.value = ''; });
-  library.addEventListener('change', () => { if (library.files.length) camera.value = ''; });
 }
 report?.addEventListener('submit', async event => {
   event.preventDefault();
   const mark = marks.get(selectedVehicle);
   const description = byId('description').value.trim();
   const result = byId('report-result');
-  const photo = byId('photo-camera').files[0] || byId('photo-file').files[0];
+  const photo = byId('photo-file').files[0];
   if (photo && (!photo.type.startsWith('image/') || photo.size >= 8 * 1024 * 1024)) {
     result.textContent = 'Choisis une image de moins de 8 Mo.';
     return;
