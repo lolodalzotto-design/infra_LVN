@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Service Garage LVN</title>
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css">
+<link rel="stylesheet" href="./garage.css?v=3">
 <main class="garage-main">
 <header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Service Garage</h1><div>Suivi des engins</div></header>
 <section id="service" class="form-card garage-panel">
@@ -15,7 +15,15 @@
 <button>Se connecter</button>
 </form>
 <div id="vehicles" class="segmented" hidden>
-<button class="segment-btn" data-vehicle="1">Engin 1</button><button class="segment-btn" data-vehicle="2">Engin 2</button><button class="segment-btn" data-vehicle="3">Engin 3</button>
+<button class="segment-btn vehicle-state" data-vehicle="1">Engin 1</button><button class="segment-btn vehicle-state" data-vehicle="2">Engin 2</button><button class="segment-btn vehicle-state" data-vehicle="3">Engin 3</button>
+<button type="button" class="segment-btn vehicle-state" data-vehicle="4" data-state="maintenance">Engin 4</button>
+</div>
+<div id="vehicle-state-editor" hidden>
+<p id="vehicle-state-label" role="status"></p>
+<div class="segmented" aria-label="État de l’engin">
+<button type="button" class="segment-btn" data-set-vehicle-state="operational">En caserne</button>
+<button type="button" class="segment-btn" data-set-vehicle-state="maintenance">À la technique</button>
+</div>
 </div>
 <button id="logout" hidden>Se déconnecter</button>
 <p id="service-status" role="status"></p>
@@ -39,5 +47,5 @@
 <ul id="reports"></ul>
 </section>
 </main>
-<script type="module" src="./page.js?v=3"></script>
+<script type="module" src="./page.js?v=6"></script>
 </html>
