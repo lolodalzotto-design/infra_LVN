@@ -1,5 +1,5 @@
 import { createCcfViewer } from './ccf-viewer.js';
-import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-switch';
+import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, addReportNote, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-history';
 
 
 const byId = id => document.getElementById(id);
@@ -284,6 +284,8 @@ report?.addEventListener('submit', async event => {
   event.preventDefault();
   const mark = marks.get(selectedVehicle);
   const description = byId('description').value.trim();
+  const reporterFirstName = byId('reporter-first-name').value.trim();
+  const reporterLastName = byId('reporter-last-name').value.trim();
   const result = byId('report-result');
   const photo = byId('photo-file').files[0];
   if (photo && (!photo.type.startsWith('image/') || photo.size >= 8 * 1024 * 1024)) {
@@ -295,6 +297,10 @@ report?.addEventListener('submit', async event => {
   const actionsTaken = malfunction ? byId('actions-taken').value.trim() : '';
   if (!answer || (malfunction && !actionsTaken)) {
     result.textContent = 'Répondez à la question et indiquez les actions menées si nécessaire.';
+    return;
+  }
+  if (!reporterFirstName || !reporterLastName) {
+    result.textContent = 'Renseignez votre nom et votre prénom.';
     return;
   }
   if (!mark || !description) {
@@ -311,6 +317,8 @@ report?.addEventListener('submit', async event => {
       u: Math.max(0, Math.min(100, mark.u)),
       v: Math.max(0, Math.min(100, mark.v)),
       description,
+      reporterFirstName,
+      reporterLastName,
       malfunction,
       actionsTaken
     }, photo);
@@ -382,6 +390,80 @@ if (!agentMode) {
   });
   let stopWatching;
   let visibleReports = [];
+  const noteDrafts = new Map();
+  const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' });
+
+  function appendEntry(container, label, timestamp) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const title = document.createElement('strong');
+    title.textContent = label;
+    item.append(title);
+    const date = timestamp?.toDate?.();
+    if (date) {
+      const time = document.createElement('small');
+      time.textContent = dateFormat.format(date);
+      item.append(time);
+    }
+    container.append(item);
+  }
+
+  function renderReportJournal(item, row, reporter) {
+    const journal = document.createElement('section');
+    const journalTitle = document.createElement('h3');
+    journalTitle.textContent = 'Main courante';
+    const notes = document.createElement('div');
+    notes.className = 'history';
+    const history = document.createElement('div');
+    history.className = 'history';
+    appendEntry(history, reporter ? 'Signalement par ' + reporter : 'Signalement créé · auteur non renseigné', row.createdAt);
+    for (const event of row.history || []) {
+      if (event.type === 'note') {
+        appendEntry(notes, event.text, event.at);
+        appendEntry(history, 'Note ajoutée à la main courante', event.at);
+      } else if (event.type === 'status') {
+        appendEntry(history, 'Statut : ' + reportStatuses[event.from] + ' → ' + reportStatuses[event.to], event.at);
+      }
+    }
+    if (!notes.childElementCount) notes.textContent = 'Aucune note.';
+    const form = document.createElement('form');
+    const field = document.createElement('textarea');
+    field.required = true;
+    field.maxLength = 1000;
+    field.rows = 2;
+    field.placeholder = 'Ex. appel à la technique, intervention prévue…';
+    field.setAttribute('aria-label', 'Note de main courante');
+    field.value = noteDrafts.get(row.id) || '';
+    field.addEventListener('input', () => noteDrafts.set(row.id, field.value));
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = 'Ajouter une note';
+    form.append(field, submit);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const note = field.value.trim();
+      if (!note) return;
+      field.disabled = true;
+      submit.disabled = true;
+      noteDrafts.delete(row.id);
+      try {
+        await addReportNote(row.id, note);
+        field.value = '';
+      } catch {
+        noteDrafts.set(row.id, note);
+        const current = list.querySelector('[data-report-id="' + CSS.escape(row.id) + '"] textarea');
+        if (current && !current.value) current.value = note;
+        serviceStatus.textContent = 'Impossible d’ajouter la note. Réessayez.';
+      } finally {
+        field.disabled = false;
+        submit.disabled = false;
+      }
+    });
+    journal.append(journalTitle, notes, form);
+    const historyTitle = document.createElement('h3');
+    historyTitle.textContent = 'Historique de cette anomalie';
+    item.append(journal, historyTitle, history);
+  }
 
   function renderServicePins() {
     clearPins();
@@ -399,6 +481,7 @@ if (!agentMode) {
     stopWatching?.();
     stopWatching = undefined;
     list.replaceChildren();
+    noteDrafts.clear();
     visibleReports = [];
     renderServicePins();
     byId('service-viewer').hidden = true;
@@ -463,6 +546,8 @@ if (!agentMode) {
         if (!agentMode) renderServicePins();
         list.replaceChildren(...rows.map(row => {
           const item = document.createElement('li');
+          item.dataset.reportId = row.id;
+          const reporter = [row.reporterFirstName, row.reporterLastName].filter(Boolean).join(' ');
           const status = row.status || 'reported';
           const dot = document.createElement('span');
           dot.className = 'status-dot ' + status;
@@ -483,7 +568,9 @@ if (!agentMode) {
               select.disabled = false;
             }
           });
-          item.append(dot, row.face + ' · ' + row.description, select);
+          const author = document.createElement('p');
+          author.textContent = 'Signalé par : ' + (reporter || 'non renseigné');
+          item.append(dot, row.face + ' · ' + row.description, select, author);
         if (row.photoPath) {
           const photoButton = document.createElement('button');
           photoButton.type = 'button';
@@ -514,6 +601,7 @@ if (!agentMode) {
           detail.textContent = row.malfunction ? 'Dysfonctionnement : oui. Actions menées : ' + row.actionsTaken : 'Dysfonctionnement : non.';
           item.append(detail);
         }
+          renderReportJournal(item, row, reporter);
           return item;
         }));
       }, () => {

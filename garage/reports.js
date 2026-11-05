@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, inMemoryPersistence, onAuthStateChanged, setPersistence, signInAnonymously, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, runTransaction, serverTimestamp, Timestamp, setDoc, where } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { deleteObject, getBlob, getStorage, ref, uploadBytes } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
@@ -79,8 +79,32 @@ export function watchReports(vehicle, onReports, onError) {
   }, onError);
 }
 
+function appendHistory(id, entry, status) {
+  const user = getAuth(serviceApp).currentUser;
+  if (!user) throw new Error('Session Garage absente.');
+  const reportRef = doc(serviceReports, id);
+  return runTransaction(getFirestore(serviceApp), async transaction => {
+    const snapshot = await transaction.get(reportRef);
+    if (!snapshot.exists()) throw new Error('Anomalie introuvable.');
+    const report = snapshot.data();
+    const currentStatus = report.status || 'reported';
+    if (status === currentStatus) return;
+    const event = { ...entry, at: Timestamp.now(), actorUid: user.uid };
+    if (status) {
+      event.from = currentStatus;
+      event.to = status;
+    }
+    const history = [...(report.history || []), event];
+    transaction.update(reportRef, status ? { status, history } : { history });
+  });
+}
+
 export function updateStatus(id, status) {
-  return updateDoc(doc(serviceReports, id), { status });
+  return appendHistory(id, { type: 'status' }, status);
+}
+
+export function addReportNote(id, text) {
+  return appendHistory(id, { type: 'note', text });
 }
 
 export function readPhoto(path) {

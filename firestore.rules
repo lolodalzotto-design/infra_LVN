@@ -200,11 +200,30 @@ service cloud.firestore {
 
     match /garage_reports/{reportId} {
       allow read: if isBootstrapAdmin();
+      function validJournalEntry() {
+        let previous = resource.data.get('history', []);
+        let next = request.resource.data.history;
+        let entry = next[previous.size()];
+        let oldStatus = resource.data.get('status', 'reported');
+        let newStatus = request.resource.data.get('status', 'reported');
+        return next == previous.concat([entry])
+          && entry.at is timestamp
+          && entry.actorUid == request.auth.uid
+          && ((entry.type == 'note'
+                && entry.keys().hasOnly(['type','at','actorUid','text'])
+                && entry.text is string && entry.text.size() <= 1000
+                && entry.text.matches('(?s).*[^[:space:]].*')
+                && newStatus == oldStatus)
+              || (entry.type == 'status'
+                && entry.keys().hasOnly(['type','at','actorUid','from','to'])
+                && entry.from == oldStatus && entry.to == newStatus
+                && newStatus != oldStatus && newStatus in ['reported','in-progress','resolved']));
+      }
       allow update: if isBootstrapAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['reported','in-progress','resolved'];
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','history'])
+        && validJournalEntry();
       allow create: if isAnonymous()
-        && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt','malfunction','actionsTaken','photoPath'])
+        && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt','malfunction','actionsTaken','photoPath','reporterFirstName','reporterLastName'])
         && (!('photoPath' in request.resource.data) || (request.resource.data.photoPath is string
             && request.resource.data.photoPath.matches('garage-reports/' + request.auth.uid + '/[A-Za-z0-9]{20}')))
         && request.resource.data.malfunction is bool
@@ -212,6 +231,12 @@ service cloud.firestore {
         && request.resource.data.actionsTaken.size() <= 240
         && ((request.resource.data.malfunction == true && request.resource.data.actionsTaken.matches('(?s).*[^[:space:]].*'))
             || (request.resource.data.malfunction == false && request.resource.data.actionsTaken == ''))
+        && request.resource.data.reporterFirstName is string
+        && request.resource.data.reporterFirstName.size() <= 60
+        && request.resource.data.reporterFirstName.matches('(?s).*[^[:space:]].*')
+        && request.resource.data.reporterLastName is string
+        && request.resource.data.reporterLastName.size() <= 60
+        && request.resource.data.reporterLastName.matches('(?s).*[^[:space:]].*')
         && request.resource.data.vehicle in [1, 2, 3, 4, 5, 6]
         && request.resource.data.face in ['Avant','Arrière','Droite','Gauche','Dessus','Dessous']
         && request.resource.data.u is number

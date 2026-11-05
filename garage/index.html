@@ -42,6 +42,14 @@
 <output id="status" aria-live="polite" hidden></output>
 <form id="report">
 <div class="field">
+<div class="field">
+<label for="reporter-last-name">Nom</label>
+<input id="reporter-last-name" name="reporterLastName" autocomplete="family-name" maxlength="60" required>
+</div>
+<div class="field">
+<label for="reporter-first-name">Prénom</label>
+<input id="reporter-first-name" name="reporterFirstName" autocomplete="given-name" maxlength="60" required>
+</div>
 <label for="description">Décrire l’anomalie</label>
 <textarea id="description" required maxlength="240" rows="3"></textarea>
 </div>
@@ -64,5 +72,5 @@
 </div>
 </section>
 </main>
-<script type="module" src="./page.js?v=20261105-ccf-inline"></script>
+<script type="module" src="./page.js?v=20261105-garage-history"></script>
 </html>
