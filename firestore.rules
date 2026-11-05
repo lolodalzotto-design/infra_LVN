@@ -195,7 +195,9 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['reported','in-progress','resolved'];
       allow create: if isAnonymous()
-        && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt','malfunction','actionsTaken'])
+        && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt','malfunction','actionsTaken','photoPath'])
+        && (!('photoPath' in request.resource.data) || (request.resource.data.photoPath is string
+            && request.resource.data.photoPath.matches('garage-reports/' + request.auth.uid + '/[A-Za-z0-9]{20}')))
         && request.resource.data.malfunction is bool
         && request.resource.data.actionsTaken is string
         && request.resource.data.actionsTaken.size() <= 240
