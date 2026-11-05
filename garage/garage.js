@@ -1,4 +1,4 @@
-import { createReport, signIn, signOut, watchReports } from './reports.js';
+import { createReport, signIn, signOut, watchReports, updateStatus } from './reports.js?v=2';
 
 
 const byId = id => document.getElementById(id);
@@ -10,6 +10,14 @@ const marks = new Map();
 let x = -20;
 let y = -30;
 let gesture;
+let selectedVehicle = 0;
+let zoom = 1;
+let agentMode = true;
+const reportStatuses = {
+  reported: 'Signalé',
+  'in-progress': 'En cours',
+  resolved: 'Résolu'
+};
 names.forEach((name, index) => {
   const face = document.createElement('div');
   face.className = 'face';
@@ -19,21 +27,27 @@ names.forEach((name, index) => {
   cube.append(face);
 });
 function rotate() {
-  cube.style.transform = 'rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
+  cube.style.transform = 'scale(' + zoom + ') rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
+}
+function addPin(face, u, v, status) {
+  if (!face) return;
+  const pin = document.createElement('span');
+  pin.className = 'pin ' + status;
+  pin.style.left = u + '%';
+  pin.style.top = v + '%';
+  face.append(pin);
+}
+function clearPins() {
+  cube.querySelectorAll('.pin').forEach(pin => pin.remove());
 }
 function renderMark() {
-  cube.querySelector('.pin')?.remove();
-  const mark = marks.get(byId('vehicle').selectedIndex);
-  byId('status').textContent = mark ? byId('vehicle').value + ' · ' + mark.face.dataset.face : 'Aucun repère posé.';
-  if (!mark) return;
-  const pin = document.createElement('span');
-  pin.className = 'pin';
-  pin.style.left = mark.u + '%';
-  pin.style.top = mark.v + '%';
-  mark.face.append(pin);
+  clearPins();
+  const mark = marks.get(selectedVehicle);
+  byId('status').textContent = mark ? 'Engin ' + selectedVehicle + ' · ' + mark.face.dataset.face : 'Aucun repère posé.';
+  if (mark) addPin(mark.face, mark.u, mark.v, 'reported');
 }
 function mark(face, u, v) {
-  marks.set(byId('vehicle').selectedIndex, {face, u, v});
+  marks.set(selectedVehicle, {face, u, v});
   renderMark();
 }
 scene.addEventListener('pointerdown', event => {
@@ -53,7 +67,7 @@ scene.addEventListener('pointermove', event => {
 });
 scene.addEventListener('pointerup', event => {
   if (gesture?.id !== event.pointerId) return;
-  if (!gesture.dragged) {
+  if (agentMode && !gesture.dragged) {
     if (gesture.face.classList.contains('face')) {
       mark(gesture.face, gesture.u, gesture.v);
     }
@@ -73,11 +87,33 @@ byId('center').onclick = () => {
   if (face?.classList.contains('face')) mark(face,50,50);
 };
 byId('clear').onclick = () => {
-  marks.delete(byId('vehicle').selectedIndex);
+  marks.delete(selectedVehicle);
   renderMark();
 };
-byId('vehicle').onchange = renderMark;
+function changeZoom(delta) {
+  zoom = Math.max(0.75, Math.min(1.6, zoom + delta));
+  rotate();
+}
+byId('zoom-in').onclick = () => changeZoom(0.15);
+byId('zoom-out').onclick = () => changeZoom(-0.15);
+document.querySelectorAll('[data-agent-vehicle]').forEach(button => {
+  button.addEventListener('click', () => {
+    selectedVehicle = Number(button.dataset.agentVehicle);
+    document.querySelectorAll('[data-agent-vehicle]').forEach(choice => {
+      choice.setAttribute('aria-pressed', String(choice === button));
+    });
+    byId('agent-detail').hidden = false;
+    byId('vehicle-title').textContent = button.textContent;
+    renderMark();
+  });
+});
 function showAgent(show) {
+  agentMode = show;
+  byId(show ? 'agent-viewer' : 'service-viewer').append(byId('viewer'));
+  byId('center').hidden = !show;
+  byId('clear').hidden = !show;
+  if (show) renderMark();
+  else renderServicePins();
   byId('agent').hidden = !show;
   byId('service').hidden = show;
   byId('agent-tab').setAttribute('aria-pressed', show);
@@ -90,7 +126,7 @@ rotate();
 const report = byId('report');
 report.addEventListener('submit', async event => {
   event.preventDefault();
-  const mark = marks.get(byId('vehicle').selectedIndex);
+  const mark = marks.get(selectedVehicle);
   const description = byId('description').value.trim();
   const result = byId('report-result');
   if (!mark || !description) {
@@ -102,7 +138,7 @@ report.addEventListener('submit', async event => {
   result.textContent = 'Envoi en cours…';
   try {
     await createReport({
-      vehicle: byId('vehicle').selectedIndex + 1,
+      vehicle: selectedVehicle,
       face: mark.face.dataset.face,
       u: Math.max(0, Math.min(100, mark.u)),
       v: Math.max(0, Math.min(100, mark.v)),
@@ -121,6 +157,15 @@ const serviceStatus = byId('service-status');
 const list = byId('reports');
 const login = byId('login');
 let stopWatching;
+let visibleReports = [];
+
+function renderServicePins() {
+  clearPins();
+  visibleReports.forEach(row => {
+    const face = [...cube.children].find(item => item.dataset.face === row.face);
+    addPin(face, row.u, row.v, row.status || 'reported');
+  });
+}
 
 function setSignedIn(value) {
   login.hidden = value;
@@ -147,6 +192,9 @@ login.addEventListener('submit', async event => {
 byId('logout').addEventListener('click', async () => {
   stopWatching?.();
   list.replaceChildren();
+  visibleReports = [];
+  if (!agentMode) renderServicePins();
+  byId('service-viewer').hidden = true;
   try {
     await signOut();
     setSignedIn(false);
@@ -160,15 +208,42 @@ document.querySelectorAll('[data-vehicle]').forEach(button => {
   button.addEventListener('click', () => {
     stopWatching?.();
     list.replaceChildren();
+    visibleReports = [];
+    if (!agentMode) renderServicePins();
+    byId('service-viewer').hidden = false;
     serviceStatus.textContent = 'Chargement…';
     stopWatching = watchReports(Number(button.dataset.vehicle), rows => {
       serviceStatus.textContent = button.textContent + ' · ' + rows.length + ' signalement(s)';
+      visibleReports = rows;
+      if (!agentMode) renderServicePins();
       list.replaceChildren(...rows.map(row => {
         const item = document.createElement('li');
-        item.textContent = row.face + ' · ' + row.description;
+        const status = row.status || 'reported';
+        const dot = document.createElement('span');
+        dot.className = 'status-dot ' + status;
+        dot.setAttribute('aria-hidden', 'true');
+        const select = document.createElement('select');
+        select.setAttribute('aria-label', 'Statut du signalement ' + row.description);
+        Object.entries(reportStatuses).forEach(([value, label]) => {
+          select.add(new Option(label, value, false, value === status));
+        });
+        select.addEventListener('change', async () => {
+          select.disabled = true;
+          try {
+            await updateStatus(row.id, select.value);
+          } catch {
+            select.value = status;
+            serviceStatus.textContent = 'Impossible de modifier le statut.';
+          } finally {
+            select.disabled = false;
+          }
+        });
+        item.append(dot, row.face + ' · ' + row.description, select);
         return item;
       }));
     }, () => {
+      visibleReports = [];
+      if (!agentMode) renderServicePins();
       serviceStatus.textContent = 'Lecture impossible. Vérifie ton accès au Garage.';
       list.replaceChildren();
     });
