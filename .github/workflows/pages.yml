@@ -32,6 +32,7 @@ jobs:
           cp index.html infra.html hcc.html garage.html styles.css robots.txt .nojekyll _site/
           cp js/*.js _site/js/
           cp -R assets _site/assets
+          cp -R garage _site/garage
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
