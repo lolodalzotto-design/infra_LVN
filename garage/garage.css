@@ -5,3 +5,8 @@
   font-size:1.05rem;
   font-weight:750;
 }
+
+.segment-btn.vehicle-state { background:rgba(34,197,94,.48); color:var(--navy); }
+.segment-btn.vehicle-state[data-state="maintenance"] { background:rgba(239,68,68,.48); }
+.segment-btn.vehicle-state[data-state="unknown"] { background:var(--surface); }
+.segment-btn.vehicle-state[aria-pressed="true"] { border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy); }
