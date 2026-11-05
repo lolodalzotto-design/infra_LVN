@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garage LVN</title>
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=2">
+<link rel="stylesheet" href="./garage.css?v=3">
 <main>
 <div class="step-title"><span class="step-number">1</span>Je signale</div>
 <div class="segmented" aria-label="Type de remontée">
@@ -14,9 +14,10 @@
 </div>
 <section id="agent" class="progressive-step garage-panel">
 <div class="segmented" aria-label="Choix de l’engin">
-<button type="button" class="segment-btn" data-agent-vehicle="1" aria-pressed="false">Engin 1</button>
-<button type="button" class="segment-btn" data-agent-vehicle="2" aria-pressed="false">Engin 2</button>
-<button type="button" class="segment-btn" data-agent-vehicle="3" aria-pressed="false">Engin 3</button>
+<button type="button" class="segment-btn vehicle-state" data-agent-vehicle="1" aria-pressed="false">Engin 1</button>
+<button type="button" class="segment-btn vehicle-state" data-agent-vehicle="2" aria-pressed="false">Engin 2</button>
+<button type="button" class="segment-btn vehicle-state" data-agent-vehicle="3" aria-pressed="false">Engin 3</button>
+<button type="button" class="segment-btn vehicle-state" data-agent-vehicle="4" data-state="maintenance" aria-pressed="false">Engin 4</button>
 </div>
 <div id="agent-detail" hidden>
 <div id="agent-viewer"><div id="viewer">
@@ -60,5 +61,5 @@
 </div>
 </section>
 </main>
-<script type="module" src="./page.js?v=5"></script>
+<script type="module" src="./page.js?v=6"></script>
 </html>
