@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Garage LVN</title>
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="./garage.css">
+<main class="garage-main">
+<header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Service Garage</h1><div>Suivi des engins</div></header>
+<section id="service" class="form-card garage-panel">
+<h2>Engins du garage</h2>
+<form id="login">
+<p><label>Adresse e-mail <input type="email" id="email" required autocomplete="username"></label></p>
+<p><label>Mot de passe <input type="password" id="password" required autocomplete="current-password"></label></p>
+<button>Se connecter</button>
+</form>
+<div id="vehicles" class="segmented" hidden>
+<button class="segment-btn" data-vehicle="1">Engin 1</button><button class="segment-btn" data-vehicle="2">Engin 2</button><button class="segment-btn" data-vehicle="3">Engin 3</button>
+</div>
+<button id="logout" hidden>Se déconnecter</button>
+<p id="service-status" role="status"></p>
+<div id="service-viewer" hidden>
+<p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
+<div class="scene plan-navigable" id="scene" style="position:relative">
+<div class="cube" id="cube"></div>
+<div class="plan-nav-controls" aria-label="Zoom et plein écran">
+<button type="button" id="zoom-in" aria-label="Zoomer">+</button>
+<button type="button" id="zoom-out" aria-label="Dézoomer">−</button>
+<button type="button" id="zoom-reset" aria-label="Recentrer">↺</button>
+<button type="button" id="cube-fullscreen" data-plan-fullscreen aria-label="Plein écran" title="Plein écran">⛶</button>
+</div>
+</div>
+<div class="controls" aria-label="Orientation et zoom du cube">
+<button class="segment-btn" data-turn="left" aria-label="Tourner à gauche">←</button><button class="segment-btn" data-turn="right" aria-label="Tourner à droite">→</button><button class="segment-btn" data-turn="up" aria-label="Tourner vers le haut">↑</button><button class="segment-btn" data-turn="down" aria-label="Tourner vers le bas">↓</button>
+
+</div>
+
+</div>
+<ul id="reports"></ul>
+</section>
+</main>
+<script type="module" src="./page.js"></script>
+</html>
