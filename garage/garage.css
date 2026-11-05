@@ -1,1 +1,7 @@
 .garage-main{max-width:780px;margin:auto;padding:16px}.garage-panel{margin-top:16px}.garage-panel[hidden],.garage-panel [hidden]{display:none!important}.garage-main [aria-pressed="true"]{background:var(--navy);color:white}.scene{height:340px;display:grid;place-items:center;perspective:620px;touch-action:none;user-select:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;cursor:grab;overflow:hidden}.cube{position:relative;width:130px;height:130px;transform-style:preserve-3d}.face{position:absolute;inset:0;display:grid;place-items:center;backface-visibility:hidden;background:#325d7c;color:white;border:2px solid #b0c9db}.face:nth-child(even){background:#244963}.pin,.status-dot{border:2px solid var(--mark);background:color-mix(in srgb,var(--mark) 42%,transparent);border-radius:50%;width:20px;height:20px}.pin{position:absolute;transform:translate(-50%,-50%);pointer-events:none}.reported{--mark:#ef4444}.in-progress{--mark:#f59e0b}.resolved{--mark:#22c55e}.status-dot{display:inline-block;vertical-align:middle;margin-right:8px}.controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.controls button{padding:8px 12px}output{display:block;margin-top:12px;font-weight:600}.garage-main textarea{width:100%}.garage-main li{margin-block:10px}.garage-main select{margin-inline:8px}
+
+#agent .plan-nav-controls #clear { display:grid; }
+#report label[for="description"], #report label[for="actions-taken"], #report label[for="photo-file"] {
+  font-size:1.05rem;
+  font-weight:750;
+}
