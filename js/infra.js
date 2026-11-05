@@ -1,3 +1,4 @@
+import { downloadPlanPdf } from './plan-pdf.js?v=20261105-pdf-1';
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
 import { renderPlan, statusBadge, formatDate, escapeHtml, showServiceModal, closeServiceModal } from './ui.js?v=20261019-pwd-toggle-1';
 import {
@@ -21,6 +22,7 @@ let unsubscribe = null;
 let profileUnsubscribe = null;
 let currentUser = null;
 let newAdminAnomalies = [];
+let exportingPlan = false;
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -35,7 +37,7 @@ const els = {
   kpiPeriodWrap: $('#kpi-period-wrap'), kpiPeriod: $('#kpi-period'),
   total: $('#kpi-total'), open: $('#kpi-open'), progress: $('#kpi-progress'), resolved: $('#kpi-resolved'), bar: $('#kpi-bar'), percent: $('#kpi-percent'),
   planBuilding: $('#plan-building'), planLevel: $('#plan-level'), planZone: $('#plan-zone'), planZoneField: $('#plan-zone-field'),
-  selectedPlan: $('#selected-plan'), planTitle: $('#plan-title'), planAnomalyCount: $('#plan-anomaly-count'),
+  planDownload: $('#plan-download'), selectedPlan: $('#selected-plan'), planTitle: $('#plan-title'), planAnomalyCount: $('#plan-anomaly-count'),
   urgentPanel: $('#urgent-panel'), urgentList: $('#urgent-list'), urgentCount: $('#urgent-count'),
   modalRoot: $('#modal-root')
 };
@@ -360,6 +362,21 @@ function refreshPlanZoneOptions() {
   renderPlanVisualizer();
 }
 
+async function exportSelectedPlan() {
+  const button = els.planDownload;
+  if (button.disabled || exportingPlan) return;
+  exportingPlan = true;
+  button.disabled = true;
+  button.textContent = 'Préparation du PDF…';
+  try {
+    const level = PLAN_CONFIG[els.planBuilding.value]?.levels?.[els.planLevel.value];
+    const zone = level?.zones?.[els.planZone.value] || Object.values(level?.zones || {})[0];
+    if (!zone) throw new Error('Choisissez un plan.');
+    await downloadPlanPdf({ svg: els.selectedPlan.querySelector('svg'), zone, title: els.planTitle.textContent, anomalies: anomalies.slice() });
+  } catch (error) { toast(error.message || 'Le PDF ne peut pas être généré.'); }
+  finally { exportingPlan = false; button.disabled = !els.selectedPlan.querySelector('svg'); button.textContent = 'Télécharger en PDF'; }
+}
+
 function renderPlanVisualizer() {
   const buildingId = els.planBuilding.value;
   const levelId = els.planLevel.value;
@@ -368,12 +385,14 @@ function renderPlanVisualizer() {
   const level = building?.levels?.[levelId];
   const zone = level?.zones?.[zoneId] || Object.values(level?.zones || {})[0];
   if (!building || !level || !zone) {
+    els.planDownload.disabled = true;
     els.selectedPlan.replaceChildren();
     els.planTitle.textContent = '';
     els.planAnomalyCount.textContent = '';
     return;
   }
 
+  els.planDownload.disabled = exportingPlan;
   const roomIds = new Set((zone.rooms || []).map(room => room.id));
   const planRows = anomalies.filter(a => roomIds.has(a.roomId) && a.status !== 'resolu');
 
@@ -699,6 +718,7 @@ async function init() {
   els.planBuilding.addEventListener('change', refreshPlanLevelOptions);
   els.planLevel.addEventListener('change', refreshPlanZoneOptions);
   els.planZone.addEventListener('change', renderPlanVisualizer);
+  els.planDownload.addEventListener('click', exportSelectedPlan);
   els.kpiPeriod.addEventListener('change', () => renderKpis(filteredKpiAnomalies(filteredAnomalies())));
 
   if (demo) {
