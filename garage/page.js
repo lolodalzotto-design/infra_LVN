@@ -11,6 +11,19 @@ let x = -20;
 let y = -30;
 let gesture;
 let selectedVehicle = 0;
+const ccfIdentifiers = {5: '17', 6: '16'};
+const vehicleName = vehicle => ccfIdentifiers[vehicle] ? 'CCF 4-1-' + ccfIdentifiers[vehicle] : 'Engin ' + vehicle;
+
+function showVehicleModel(vehicle) {
+  const container = byId('ccf-model-link');
+  const identifier = ccfIdentifiers[vehicle];
+  container.hidden = !identifier;
+  if (identifier) {
+    const link = container.querySelector('a');
+    link.href = './ccf-3d.html?engin=' + identifier;
+    link.textContent = 'Voir le ' + vehicleName(vehicle) + ' en 3D (nouvel onglet)';
+  }
+}
 let zoom = 1;
 let shiftX = 0;
 let shiftY = 0;
@@ -47,7 +60,7 @@ function clearPins() {
 function renderMark() {
   clearPins();
   const mark = marks.get(selectedVehicle);
-  byId('status').textContent = mark ? 'Engin ' + selectedVehicle + ' · ' + mark.face.dataset.face : 'Aucun repère posé.';
+  byId('status').textContent = mark ? vehicleName(selectedVehicle) + ' · ' + mark.face.dataset.face : 'Aucun repère posé.';
   if (mark) addPin(mark.face, mark.u, mark.v, 'reported');
 }
 function mark(face, u, v) {
@@ -227,6 +240,7 @@ document.querySelectorAll('[data-agent-vehicle]').forEach(button => {
       choice.setAttribute('aria-pressed', String(choice === button));
     });
     byId('agent-detail').hidden = false;
+    showVehicleModel(selectedVehicle);
     renderMark();
   });
 });
@@ -303,7 +317,7 @@ function renderVehicleStateEditor() {
   const label = byId('vehicle-state-label');
   if (!label || !serviceVehicle) return;
   const state = vehicleStates.get(serviceVehicle) || 'unknown';
-  label.textContent = 'Engin ' + serviceVehicle + ' · ' + vehicleLabels[state];
+  label.textContent = vehicleName(serviceVehicle) + ' · ' + vehicleLabels[state];
   document.querySelectorAll('[data-set-vehicle-state]').forEach(button => {
     button.setAttribute('aria-pressed', String(button.dataset.setVehicleState === state));
   });
@@ -423,6 +437,7 @@ if (!agentMode) {
       visibleReports = [];
       if (!agentMode) renderServicePins();
       byId('service-viewer').hidden = false;
+      showVehicleModel(serviceVehicle);
       serviceStatus.textContent = 'Chargement…';
       stopWatching = watchReports(Number(button.dataset.vehicle), rows => {
         serviceStatus.textContent = button.textContent + ' · ' + rows.length + ' signalement(s)';

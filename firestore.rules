@@ -190,10 +190,10 @@ service cloud.firestore {
     }
 
     match /garage_vehicle_states/{vehicleId} {
-      allow get: if vehicleId in ['1','2','3','4'];
+      allow get: if vehicleId in ['1','2','3','4','5','6'];
       allow create, update: if (isBootstrapAdmin()
           || (hasProfile() && profile().active == true && profileSector() == 'garage' && profile().role in ['admin','user']))
-        && vehicleId in ['1','2','3','4']
+        && vehicleId in ['1','2','3','4','5','6']
         && request.resource.data.keys().hasOnly(['status'])
         && request.resource.data.status in ['operational','maintenance'];
     }
@@ -212,7 +212,7 @@ service cloud.firestore {
         && request.resource.data.actionsTaken.size() <= 240
         && ((request.resource.data.malfunction == true && request.resource.data.actionsTaken.matches('(?s).*[^[:space:]].*'))
             || (request.resource.data.malfunction == false && request.resource.data.actionsTaken == ''))
-        && request.resource.data.vehicle in [1, 2, 3, 4]
+        && request.resource.data.vehicle in [1, 2, 3, 4, 5, 6]
         && request.resource.data.face in ['Avant','Arrière','Droite','Gauche','Dessus','Dessous']
         && request.resource.data.u is number
         && request.resource.data.u >= 0 && request.resource.data.u <= 100

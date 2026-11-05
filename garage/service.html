@@ -40,6 +40,8 @@
 <div id="vehicles" class="segmented" hidden>
 <button class="segment-btn vehicle-state" data-vehicle="1">Engin 1</button><button class="segment-btn vehicle-state" data-vehicle="2">Engin 2</button><button class="segment-btn vehicle-state" data-vehicle="3">Engin 3</button>
 <button type="button" class="segment-btn vehicle-state" data-vehicle="4" data-state="maintenance">Engin 4</button>
+<button type="button" class="segment-btn vehicle-state" data-vehicle="5" data-state="operational">CCF 4-1-17</button>
+<button type="button" class="segment-btn vehicle-state" data-vehicle="6" data-state="operational">CCF 4-1-16</button>
 </div>
 <div id="vehicle-state-editor" hidden>
 <p id="vehicle-state-label" role="status"></p>
@@ -50,6 +52,7 @@
 </div>
 <p id="service-status" role="status"></p>
 <div id="service-viewer" hidden>
+<p id="ccf-model-link" hidden><a href="./ccf-3d.html?engin=17" target="_blank" rel="noopener">Voir le CCF en 3D (nouvel onglet)</a></p>
 <p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
 <div class="scene plan-navigable" id="scene" style="position:relative">
 <div class="cube" id="cube"></div>
@@ -69,5 +72,5 @@
 <ul id="reports"></ul>
 </section>
 </main>
-<script type="module" src="./page.js?v=20261105-garage-menu"></script>
+<script type="module" src="./page.js?v=20261105-ccf"></script>
 </html>
