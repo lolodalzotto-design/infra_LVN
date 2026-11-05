@@ -103,7 +103,10 @@ function maybeShowMemberInstallGuide() {
 }
 
 function openNewUserWelcomeModal(created, username, initialPassword) {
-  const instructions = `HCC LVN\n\nLien de connexion :\n${INFRA_APP_URL}\n\nNom d’utilisateur :\n${username}\n\nMot de passe initial :\n${initialPassword}\n\nL’utilisateur peut ensuite modifier son mot de passe depuis le menu ☰.`;
+  const isInfraAccount = created?.sector === 'infra';
+  const sectorLabel = isInfraAccount ? 'INFRA' : 'HCC';
+  const loginUrl = isInfraAccount ? new URL('./infra.html', INFRA_APP_URL).href : INFRA_APP_URL;
+  const instructions = `${sectorLabel} LVN\n\nLien de connexion :\n${loginUrl}\n\nNom d’utilisateur :\n${username}\n\nMot de passe initial :\n${initialPassword}\n\nL’utilisateur peut ensuite modifier son mot de passe depuis le menu ☰.`;
   modal(`<div class="modal-head"><div><h2>Compte créé</h2><div class="help">${escapeHtml(created?.fullName || username)}</div></div><button class="icon-btn" data-close>×</button></div>
     <div class="onboarding-summary"><div class="onboarding-row"><span>Nom d’utilisateur</span><strong>${escapeHtml(username)}</strong></div><div class="onboarding-row"><span>Mot de passe initial</span><strong>${escapeHtml(initialPassword)}</strong></div></div>
     <div class="submit-row"><button id="copy-onboarding-btn" class="secondary" type="button">Copier les instructions</button><button class="primary" type="button" data-close>Terminer</button></div>`);
@@ -533,8 +536,9 @@ async function openUsersModal() {
     modal(`<div class="modal-head"><div><h2>Gestion des accès</h2><div class="help">Comptes du service HCC uniquement.</div></div><button class="icon-btn" data-close>×</button></div>
       <div class="account-list">${users.map(u => `<article class="account-card"><div class="account-main"><div class="account-name">${escapeHtml(u.username || 'Utilisateur')}</div><div class="account-meta"><span class="account-role">${u.role === 'admin' ? 'Administrateur' : 'HCC'}</span><span class="account-state ${u.active ? '' : 'revoked'}">${u.active ? 'Actif' : 'Accès révoqué'}</span></div></div><div class="account-actions">${u.role === 'admin' ? '' : `<button class="${u.active ? 'danger' : 'secondary'} account-toggle" type="button" data-id="${escapeHtml(u.uid)}" data-active="${u.active ? '1':'0'}">${u.active ? 'Révoquer l’accès':'Réactiver'}</button>`}${u.storedRole === 'user' && u.uid !== currentUser?.uid ? `<button class="danger account-delete" type="button" data-id="${escapeHtml(u.uid)}">Supprimer</button>` : ''}</div></article>`).join('')}</div>
       <p class="help">Supprimer efface le profil : le membre disparaît de la liste et perd tout accès aux données. Le login Firebase Auth orphelin ne peut pas être supprimé depuis l’application et n’a plus aucun accès.</p>
-      <form id="create-user-form" class="account-create"><h3>Ajouter un membre HCC</h3><div class="form-grid">
+      <form id="create-user-form" class="account-create"><h3>Ajouter un membre</h3><div class="form-grid">
         <div class="field full"><label>Nom de famille / nom d’utilisateur *</label><input name="username" required maxlength="60" autocomplete="off"></div>
+        ${currentUser.bootstrapAdmin ? `<div class="field full"><label for="account-sector">Type de compte</label><select id="account-sector" name="sector"><option value="hcc">Utilisateur HCC</option><option value="infra">Utilisateur INFRA</option></select></div>` : ''}
         <div class="field full"><label>Mot de passe initial *</label><input name="initialPassword" type="password" required minlength="8" autocomplete="new-password"></div>
       </div><div class="help">Aucune adresse e-mail n’est nécessaire. Le nom est l’identifiant de connexion.</div><div class="submit-row"><button class="primary" type="submit">Créer le compte</button></div></form>`);
     els.modalRoot.querySelectorAll('.account-toggle').forEach(button => button.addEventListener('click', async () => {
@@ -552,7 +556,7 @@ async function openUsersModal() {
     }));
     $('#create-user-form').addEventListener('submit', async e => {
       e.preventDefault(); const fd=new FormData(e.currentTarget); const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
-      try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const created=await createSectorUser({username,initialPassword,sector:'hcc'}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
+      try { const username=String(fd.get('username')||'').trim(); const initialPassword=String(fd.get('initialPassword')||''); const sector=currentUser.bootstrapAdmin && fd.get('sector')==='infra' ? 'infra' : 'hcc'; const created=await createSectorUser({username,initialPassword,sector}); toast(`Compte ${created.username} créé.`); openNewUserWelcomeModal(created,username,initialPassword); }
       catch(err){ button.disabled=false; toast(err?.code==='auth/email-already-in-use'?'Ce nom d’utilisateur ne peut pas être réutilisé : un ancien compte de connexion existe encore. Ce login orphelin n’a plus aucun accès aux données. Choisissez un autre nom.':(err.message||'Création impossible.')); }
     });
   } catch(err){ toast(err.message||'Impossible de charger les comptes.'); }
