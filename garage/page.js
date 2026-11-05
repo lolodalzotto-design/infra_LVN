@@ -219,11 +219,29 @@ document.querySelectorAll('[data-agent-vehicle]').forEach(button => {
 rotate();
 
 const report = byId('report');
+function syncActionsField() {
+  const needsActions = report.elements.malfunction.value === 'yes';
+  const actions = byId('actions-taken');
+  byId('actions-field').hidden = !needsActions;
+  actions.disabled = !needsActions;
+  actions.required = needsActions;
+}
+report?.addEventListener('change', event => {
+  if (event.target.name === 'malfunction') syncActionsField();
+});
+if (report) syncActionsField();
 report?.addEventListener('submit', async event => {
   event.preventDefault();
   const mark = marks.get(selectedVehicle);
   const description = byId('description').value.trim();
   const result = byId('report-result');
+  const answer = report.elements.malfunction.value;
+  const malfunction = answer === 'yes';
+  const actionsTaken = malfunction ? byId('actions-taken').value.trim() : '';
+  if (!answer || (malfunction && !actionsTaken)) {
+    result.textContent = 'Réponds à la question et indique les actions menées si nécessaire.';
+    return;
+  }
   if (!mark || !description) {
     result.textContent = 'Pose un repère et décris l’anomalie.';
     return;
@@ -237,9 +255,12 @@ report?.addEventListener('submit', async event => {
       face: mark.face.dataset.face,
       u: Math.max(0, Math.min(100, mark.u)),
       v: Math.max(0, Math.min(100, mark.v)),
-      description
+      description,
+      malfunction,
+      actionsTaken
     });
-    byId('description').value = '';
+    report.reset();
+    syncActionsField();
     result.textContent = 'Signalement transmis au Garage.';
   } catch {
     result.textContent = 'Envoi impossible. Réessaie dans un instant.';
@@ -335,6 +356,11 @@ if (!agentMode) {
             }
           });
           item.append(dot, row.face + ' · ' + row.description, select);
+        if (typeof row.malfunction === 'boolean') {
+          const detail = document.createElement('p');
+          detail.textContent = row.malfunction ? 'Dysfonctionnement : oui. Actions menées : ' + row.actionsTaken : 'Dysfonctionnement : non.';
+          item.append(detail);
+        }
           return item;
         }));
       }, () => {
