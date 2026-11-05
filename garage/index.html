@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garage LVN</title>
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=3">
+<link rel="stylesheet" href="./garage.css?v=20261105-ccf-inline">
 <main>
 <div class="step-title"><span class="step-number">1</span>Je signale</div>
 <div class="segmented" aria-label="Type de remontée">
@@ -22,10 +22,10 @@
 <button type="button" class="segment-btn vehicle-state" data-agent-vehicle="6" data-state="operational" aria-pressed="false">CCF 4-1-16</button>
 </div>
 <div id="agent-detail" hidden>
-<p id="ccf-model-link" hidden><a href="./ccf-3d.html?engin=17" target="_blank" rel="noopener">Voir le CCF en 3D (nouvel onglet)</a></p>
 <div id="agent-viewer"><div id="viewer">
-<div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Cube de l’engin. Flèches pour tourner, Entrée pour marquer la face visible." style="position:relative">
+<div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Vue de l’engin. Flèches pour tourner, Entrée pour marquer la face visible." style="position:relative">
 <div class="cube" id="cube"></div>
+<canvas id="ccf-view" class="ccf-view" aria-hidden="true" hidden></canvas>
 <div class="plan-nav-controls" aria-label="Zoom et plein écran">
 <button type="button" id="zoom-in" aria-label="Zoomer">+</button>
 <button type="button" id="zoom-out" aria-label="Dézoomer">−</button>
@@ -64,5 +64,5 @@
 </div>
 </section>
 </main>
-<script type="module" src="./page.js?v=20261105-ccf"></script>
+<script type="module" src="./page.js?v=20261105-ccf-inline"></script>
 </html>

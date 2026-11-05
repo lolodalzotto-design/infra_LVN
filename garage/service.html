@@ -5,7 +5,7 @@
 <title>Service Garage LVN</title>
 <meta name="apple-mobile-web-app-title" content="Garage LVN">
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=20261105-garage-menu">
+<link rel="stylesheet" href="./garage.css?v=20261105-ccf-inline">
 <main class="garage-main">
 <header id="service-topbar" class="infra-topbar garage-service-topbar hidden">
   <div class="infra-topbar-brand">GARAGE LVN</div>
@@ -52,10 +52,10 @@
 </div>
 <p id="service-status" role="status"></p>
 <div id="service-viewer" hidden>
-<p id="ccf-model-link" hidden><a href="./ccf-3d.html?engin=17" target="_blank" rel="noopener">Voir le CCF en 3D (nouvel onglet)</a></p>
 <p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
-<div class="scene plan-navigable" id="scene" style="position:relative">
+<div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Vue de l’engin. Flèches pour tourner." style="position:relative">
 <div class="cube" id="cube"></div>
+<canvas id="ccf-view" class="ccf-view" aria-hidden="true" hidden></canvas>
 <div class="plan-nav-controls" aria-label="Zoom et plein écran">
 <button type="button" id="zoom-in" aria-label="Zoomer">+</button>
 <button type="button" id="zoom-out" aria-label="Dézoomer">−</button>
@@ -63,7 +63,7 @@
 <button type="button" id="cube-fullscreen" data-plan-fullscreen aria-label="Plein écran" title="Plein écran">⛶</button>
 </div>
 </div>
-<div class="controls" aria-label="Orientation et zoom du cube">
+<div class="controls" aria-label="Orientation et zoom de l’engin">
 <button class="segment-btn" data-turn="left" aria-label="Tourner à gauche">←</button><button class="segment-btn" data-turn="right" aria-label="Tourner à droite">→</button><button class="segment-btn" data-turn="up" aria-label="Tourner vers le haut">↑</button><button class="segment-btn" data-turn="down" aria-label="Tourner vers le bas">↓</button>
 
 </div>
@@ -72,5 +72,5 @@
 <ul id="reports"></ul>
 </section>
 </main>
-<script type="module" src="./page.js?v=20261105-ccf"></script>
+<script type="module" src="./page.js?v=20261105-ccf-inline"></script>
 </html>

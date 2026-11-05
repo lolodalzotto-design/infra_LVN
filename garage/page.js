@@ -1,3 +1,4 @@
+import { createCcfViewer } from './ccf-viewer.js';
 import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-switch';
 
 
@@ -14,15 +15,17 @@ let selectedVehicle = 0;
 const ccfIdentifiers = {5: '17', 6: '16'};
 const vehicleName = vehicle => ccfIdentifiers[vehicle] ? 'CCF 4-1-' + ccfIdentifiers[vehicle] : 'Engin ' + vehicle;
 
+const ccfCanvas = byId('ccf-view');
+const ccfViewer = createCcfViewer(ccfCanvas);
+let ccfActive = false;
 function showVehicleModel(vehicle) {
-  const container = byId('ccf-model-link');
-  const identifier = ccfIdentifiers[vehicle];
-  container.hidden = !identifier;
-  if (identifier) {
-    const link = container.querySelector('a');
-    link.href = './ccf-3d.html?engin=' + identifier;
-    link.textContent = 'Voir le ' + vehicleName(vehicle) + ' en 3D (nouvel onglet)';
-  }
+  const next = Boolean(ccfIdentifiers[vehicle]);
+  if (ccfActive !== next) byId('zoom-reset').click();
+  ccfActive = next;
+  ccfCanvas.hidden = !ccfActive;
+  cube.hidden = ccfActive;
+  ccfViewer.setPins([]);
+  rotate();
 }
 let zoom = 1;
 let shiftX = 0;
@@ -44,6 +47,7 @@ names.forEach((name, index) => {
   cube.append(face);
 });
 function rotate() {
+  if (ccfActive) ccfViewer.setCamera({ x, y, zoom, shiftX, shiftY });
   cube.style.transform = 'translate(' + shiftX + 'px,' + shiftY + 'px) scale(' + zoom + ') rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
 }
 function addPin(face, u, v, status) {
@@ -60,8 +64,12 @@ function clearPins() {
 function renderMark() {
   clearPins();
   const mark = marks.get(selectedVehicle);
-  byId('status').textContent = mark ? vehicleName(selectedVehicle) + ' · ' + mark.face.dataset.face : 'Aucun repère posé.';
-  if (mark) addPin(mark.face, mark.u, mark.v, 'reported');
+  byId('status').textContent = mark ? vehicleName(selectedVehicle) + ' · ' + mark.face : 'Aucun repère posé.';
+  if (ccfActive) ccfViewer.setPins(mark ? [{...mark, status: 'reported'}] : []);
+  else if (mark) addPin(cubeFace(mark.face), mark.u, mark.v, 'reported');
+}
+function cubeFace(name) {
+  return [...cube.children].find(item => item.dataset.face === name);
 }
 function mark(face, u, v) {
   marks.set(selectedVehicle, {face, u, v});
@@ -75,7 +83,7 @@ function pinchState() {
 
 scene.addEventListener('pointerdown', event => {
   if (event.target.closest('button') || event.button !== 0) return;
-  if (event.pointerType === 'touch' && isFullscreen()) {
+  if (event.pointerType === 'touch' && (isFullscreen() || ccfActive)) {
     touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
     if (touches.size >= 2) {
       gesture = undefined;
@@ -113,8 +121,13 @@ function releasePointer(event) {
   if (gesture?.id === event.pointerId) gesture = undefined;
 }
 scene.addEventListener('pointerup', event => {
-  if (agentMode && gesture?.id === event.pointerId && !gesture.dragged && gesture.face.classList.contains('face')) {
-    mark(gesture.face, gesture.u, gesture.v);
+  if (agentMode && gesture?.id === event.pointerId && !gesture.dragged) {
+    if (ccfActive) {
+      const hit = ccfViewer.pick(event.clientX, event.clientY);
+      if (hit) mark(hit.face, hit.u, hit.v);
+    } else if (gesture.face.classList.contains('face')) {
+      mark(gesture.face.dataset.face, gesture.u, gesture.v);
+    }
   }
   releasePointer(event);
 });
@@ -128,8 +141,15 @@ document.querySelectorAll('[data-turn]').forEach(button => button.onclick = () =
 });
 function markCenter() {
   const box = scene.getBoundingClientRect();
-  const face = document.elementFromPoint(box.left + box.width/2, box.top + box.height/2);
-  if (face?.classList.contains('face')) mark(face,50,50);
+  const clientX = box.left + box.width / 2;
+  const clientY = box.top + box.height / 2;
+  if (ccfActive) {
+    const hit = ccfViewer.pick(clientX, clientY);
+    if (hit) mark(hit.face, hit.u, hit.v);
+    return;
+  }
+  const face = document.elementFromPoint(clientX, clientY);
+  if (face?.classList.contains('face')) mark(face.dataset.face, 50, 50);
 }
 byId('center')?.addEventListener('click', markCenter);
 scene.addEventListener('keydown', event => {
@@ -229,7 +249,7 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && scene.classList.contains('plan-fullscreen-fallback')) setFullscreenFallback(false);
 });
 scene.addEventListener('wheel', event => {
-  if (!isFullscreen()) return;
+  if (!isFullscreen() && !ccfActive) return;
   event.preventDefault();
   changeZoom(event.deltaY < 0 ? 1 / 0.82 : 1 / 1.22, event.clientX, event.clientY);
 }, {passive:false});
@@ -287,7 +307,7 @@ report?.addEventListener('submit', async event => {
   try {
     await createReport({
       vehicle: selectedVehicle,
-      face: mark.face.dataset.face,
+      face: mark.face,
       u: Math.max(0, Math.min(100, mark.u)),
       v: Math.max(0, Math.min(100, mark.v)),
       description,
@@ -365,10 +385,8 @@ if (!agentMode) {
 
   function renderServicePins() {
     clearPins();
-    visibleReports.forEach(row => {
-      const face = [...cube.children].find(item => item.dataset.face === row.face);
-      addPin(face, row.u, row.v, row.status || 'reported');
-    });
+    if (ccfActive) ccfViewer.setPins(visibleReports);
+    else visibleReports.forEach(row => addPin(cubeFace(row.face), row.u, row.v, row.status || 'reported'));
   }
 
   watchServiceSession(session => {
