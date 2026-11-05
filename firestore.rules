@@ -189,6 +189,22 @@ service cloud.firestore {
       allow delete: if isInfra();
     }
 
+    match /garage_reports/{reportId} {
+      allow read: if isBootstrapAdmin();
+      allow create: if isAnonymous()
+        && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt'])
+        && request.resource.data.vehicle in [1, 2, 3]
+        && request.resource.data.face in ['Avant','Arrière','Droite','Gauche','Dessus','Dessous']
+        && request.resource.data.u is number
+        && request.resource.data.u >= 0 && request.resource.data.u <= 100
+        && request.resource.data.v is number
+        && request.resource.data.v >= 0 && request.resource.data.v <= 100
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 240
+        && request.resource.data.createdAt == request.time;
+    }
+
     match /hcc_requests/{requestId} {
       allow create: if (isAnonymous() && validPublicHccRequest()) || isHcc();
       allow read, update, delete: if isHcc();
