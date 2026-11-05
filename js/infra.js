@@ -1,4 +1,4 @@
-import { downloadPlanPdf } from './plan-pdf.js?v=20261105-pdf-1';
+import { downloadPlanPdf } from './plan-pdf.js?v=20261105-pdf-date-1';
 import { PLAN_CONFIG, CATEGORIES, allRooms, getRoom } from './data.js?v=20261008-infra-room-tap-3';
 import { renderPlan, statusBadge, formatDate, escapeHtml, showServiceModal, closeServiceModal } from './ui.js?v=20261019-pwd-toggle-1';
 import {
