@@ -1,4 +1,4 @@
-import { createReport, signIn, signOut, watchReports, updateStatus } from './reports.js?v=2';
+import { createReport, signIn, signOut, watchReports, updateStatus, readPhoto } from './reports.js?v=3';
 
 
 const byId = id => document.getElementById(id);
@@ -229,12 +229,23 @@ function syncActionsField() {
 report?.addEventListener('change', event => {
   if (event.target.name === 'malfunction') syncActionsField();
 });
-if (report) syncActionsField();
+if (report) {
+  syncActionsField();
+  const camera = byId('photo-camera');
+  const library = byId('photo-file');
+  camera.addEventListener('change', () => { if (camera.files.length) library.value = ''; });
+  library.addEventListener('change', () => { if (library.files.length) camera.value = ''; });
+}
 report?.addEventListener('submit', async event => {
   event.preventDefault();
   const mark = marks.get(selectedVehicle);
   const description = byId('description').value.trim();
   const result = byId('report-result');
+  const photo = byId('photo-camera').files[0] || byId('photo-file').files[0];
+  if (photo && (!photo.type.startsWith('image/') || photo.size >= 8 * 1024 * 1024)) {
+    result.textContent = 'Choisis une image de moins de 8 Mo.';
+    return;
+  }
   const answer = report.elements.malfunction.value;
   const malfunction = answer === 'yes';
   const actionsTaken = malfunction ? byId('actions-taken').value.trim() : '';
@@ -258,7 +269,7 @@ report?.addEventListener('submit', async event => {
       description,
       malfunction,
       actionsTaken
-    });
+    }, photo);
     report.reset();
     syncActionsField();
     result.textContent = 'Signalement transmis au Garage.';
@@ -356,6 +367,31 @@ if (!agentMode) {
             }
           });
           item.append(dot, row.face + ' · ' + row.description, select);
+        if (row.photoPath) {
+          const photoButton = document.createElement('button');
+          photoButton.type = 'button';
+          photoButton.textContent = 'Voir la photo';
+          photoButton.addEventListener('click', async () => {
+            photoButton.disabled = true;
+            try {
+              const blob = await readPhoto(row.photoPath);
+              if (!item.isConnected) return;
+              const url = URL.createObjectURL(blob);
+              const image = document.createElement('img');
+              image.alt = 'Photo jointe au signalement';
+              image.style.maxWidth = '100%';
+              const release = () => URL.revokeObjectURL(url);
+              image.addEventListener('load', release, {once:true});
+              image.addEventListener('error', release, {once:true});
+              image.src = url;
+              photoButton.replaceWith(image);
+            } catch {
+              photoButton.textContent = 'Réessayer d’ouvrir la photo';
+              photoButton.disabled = false;
+            }
+          });
+          item.append(' ', photoButton);
+        }
         if (typeof row.malfunction === 'boolean') {
           const detail = document.createElement('p');
           detail.textContent = row.malfunction ? 'Dysfonctionnement : oui. Actions menées : ' + row.actionsTaken : 'Dysfonctionnement : non.';
