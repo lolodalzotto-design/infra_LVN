@@ -39,11 +39,20 @@
 <form id="report">
 <p><label for="description">Décris l’anomalie</label></p>
 <textarea id="description" required maxlength="240" rows="3"></textarea>
+<fieldset>
+<legend>Dysfonctionnement ?</legend>
+<label><input type="radio" name="malfunction" value="yes" required> Oui</label>
+<label><input type="radio" name="malfunction" value="no"> Non</label>
+</fieldset>
+<div id="actions-field" hidden>
+<p><label for="actions-taken">Quelles actions as-tu menées ?</label></p>
+<textarea id="actions-taken" maxlength="240" rows="3" disabled></textarea>
+</div>
 <p><button class="primary" type="submit">Envoyer au Garage</button></p>
 </form>
 <output id="report-result" aria-live="polite"></output>
 </div>
 </section>
 </main>
-<script type="module" src="./page.js"></script>
+<script type="module" src="./page.js?v=2"></script>
 </html>
