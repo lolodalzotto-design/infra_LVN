@@ -64,6 +64,12 @@ service firebase.storage {
       allow delete: if isHcc();
     }
 
+    match /garage-reports/{uid}/{fileName} {
+      allow create: if isAnonymous() && request.auth.uid == uid && validImageUpload();
+      allow get: if isBootstrapAdmin();
+      allow delete: if isAnonymous() && request.auth.uid == uid;
+    }
+
     match /resolutions/{uid}/{fileName} {
       allow read: if isInfra();
       allow create, update: if isInfra() && validImageUpload();
