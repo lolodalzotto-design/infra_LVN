@@ -191,6 +191,9 @@ service cloud.firestore {
 
     match /garage_reports/{reportId} {
       allow read: if isBootstrapAdmin();
+      allow update: if isBootstrapAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['reported','in-progress','resolved'];
       allow create: if isAnonymous()
         && request.resource.data.keys().hasOnly(['vehicle','face','u','v','description','createdAt'])
         && request.resource.data.vehicle in [1, 2, 3]
