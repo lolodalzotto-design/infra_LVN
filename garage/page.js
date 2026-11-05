@@ -253,18 +253,18 @@ report?.addEventListener('submit', async event => {
   const result = byId('report-result');
   const photo = byId('photo-file').files[0];
   if (photo && (!photo.type.startsWith('image/') || photo.size >= 8 * 1024 * 1024)) {
-    result.textContent = 'Choisis une image de moins de 8 Mo.';
+    result.textContent = 'Choisissez une image de moins de 8 Mo.';
     return;
   }
   const answer = report.elements.malfunction.value;
   const malfunction = answer === 'yes';
   const actionsTaken = malfunction ? byId('actions-taken').value.trim() : '';
   if (!answer || (malfunction && !actionsTaken)) {
-    result.textContent = 'Réponds à la question et indique les actions menées si nécessaire.';
+    result.textContent = 'Répondez à la question et indiquez les actions menées si nécessaire.';
     return;
   }
   if (!mark || !description) {
-    result.textContent = 'Pose un repère et décris l’anomalie.';
+    result.textContent = 'Posez un repère et décrivez l’anomalie.';
     return;
   }
   const button = report.querySelector('button');
@@ -284,7 +284,7 @@ report?.addEventListener('submit', async event => {
     syncActionsField();
     result.textContent = 'Signalement transmis au Garage.';
   } catch {
-    result.textContent = 'Envoi impossible. Réessaie dans un instant.';
+    result.textContent = 'Envoi impossible. Réessayez dans un instant.';
   } finally {
     button.disabled = false;
   }
