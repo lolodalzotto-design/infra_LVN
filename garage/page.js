@@ -1,4 +1,4 @@
-import { createReport, signIn, signOut, watchReports, updateStatus, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=4';
+import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-switch';
 
 
 const byId = id => document.getElementById(id);
@@ -335,11 +335,22 @@ if (!agentMode) {
     });
   }
 
-  function setSignedIn(value) {
-    login.hidden = value;
-    byId('vehicles').hidden = !value;
-    byId('logout').hidden = !value;
-  }
+  watchServiceSession(session => {
+    const signedIn = Boolean(session);
+    login.hidden = signedIn;
+    byId('vehicles').hidden = !signedIn;
+    byId('logout').hidden = !signedIn;
+    byId('service-sector-switch').hidden = !session?.generalAdmin;
+    stopWatching?.();
+    stopWatching = undefined;
+    list.replaceChildren();
+    visibleReports = [];
+    renderServicePins();
+    byId('service-viewer').hidden = true;
+    byId('vehicle-state-editor').hidden = true;
+    serviceVehicle = 0;
+    serviceStatus.textContent = signedIn ? 'Sélectionnez un engin.' : '';
+  });
 
   login.addEventListener('submit', async event => {
     event.preventDefault();
@@ -348,8 +359,6 @@ if (!agentMode) {
     try {
       await signIn(byId('email').value, byId('password').value);
       byId('password').value = '';
-      serviceStatus.textContent = 'Sélectionne un engin.';
-      setSignedIn(true);
     } catch {
       serviceStatus.textContent = 'Connexion Garage impossible.';
     } finally {
@@ -358,19 +367,10 @@ if (!agentMode) {
   });
 
   byId('logout').addEventListener('click', async () => {
-    stopWatching?.();
-    list.replaceChildren();
-    visibleReports = [];
-    if (!agentMode) renderServicePins();
-    byId('service-viewer').hidden = true;
-    byId('vehicle-state-editor').hidden = true;
-    serviceVehicle = 0;
     try {
       await signOut();
-      setSignedIn(false);
-      serviceStatus.textContent = '';
     } catch {
-      serviceStatus.textContent = 'Déconnexion impossible. Réessaie.';
+      serviceStatus.textContent = 'Déconnexion impossible. Réessayez.';
     }
   });
 

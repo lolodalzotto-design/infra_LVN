@@ -28,7 +28,7 @@ const els = {
   loginWrap: $('#login-wrap'), shell: $('#infra-shell'), loginForm: $('#login-form'), logout: $('#logout-btn'),
   username: $('#username'), password: $('#password'), loginError: $('#login-error'),
   changePassword: $('#change-password-btn'),
-  manageUsers: $('#manage-users-btn'), sectorSwitch: $('#sector-switch-link'), currentUser: $('#current-user'),
+  manageUsers: $('#manage-users-btn'), sectorSwitch: $('#sector-switch-link'), garageSwitch: $('#garage-switch-link'), currentUser: $('#current-user'),
   installApp: $('#install-app-btn'),
   topMenuButton: $('#top-menu-button'), topMenu: $('#top-menu'),
   notificationButton: $('#notification-button'), notificationBadge: $('#notification-badge'),
@@ -226,6 +226,7 @@ async function openShell(profile = null) {
   els.notificationButton.classList.toggle('hidden', !currentUser.isAdmin);
   els.kpiPeriodWrap.classList.toggle('hidden', !currentUser.isAdmin);
   document.querySelectorAll('.admin-overview').forEach(node => node.classList.remove('hidden'));
+  els.garageSwitch.classList.toggle('hidden', !currentUser.bootstrapAdmin);
   maybeShowMemberInstallGuide();
   if (!unsubscribe) unsubscribe = subscribeHccRequests((rows) => {
     anomalies = rows;
@@ -246,7 +247,7 @@ async function openShell(profile = null) {
 function closeShell() {
   currentUser = null;
   els.loginWrap.classList.remove('hidden'); els.shell.classList.remove('active'); els.logout.classList.add('hidden');
-  els.manageUsers.classList.add('hidden'); els.sectorSwitch.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
+  els.manageUsers.classList.add('hidden'); els.sectorSwitch.classList.add('hidden'); els.garageSwitch.classList.add('hidden'); els.notificationButton.classList.add('hidden'); setNotificationCount(0);
   newAdminAnomalies = []; els.currentUser.textContent = ''; closeTopMenu();
   els.kpiPeriod.value = 'all';
   unsubscribe?.(); unsubscribe = null;

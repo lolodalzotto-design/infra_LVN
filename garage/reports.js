@@ -1,15 +1,13 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getAuth, inMemoryPersistence, setPersistence, signInAnonymously, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import { getAuth, inMemoryPersistence, onAuthStateChanged, setPersistence, signInAnonymously, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { deleteObject, getBlob, getStorage, ref, uploadBytes } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
 const agentApp = initializeApp(firebaseConfig, 'garage-agent');
-const serviceApp = initializeApp(firebaseConfig, 'garage-service');
+const serviceApp = initializeApp(firebaseConfig);
 const agentAuth = getAuth(agentApp);
-const serviceAuth = getAuth(serviceApp);
 const agentReady = setPersistence(agentAuth, inMemoryPersistence);
-const serviceReady = setPersistence(serviceAuth, inMemoryPersistence);
 const agentReports = collection(getFirestore(agentApp), 'garage_reports');
 const serviceReports = collection(getFirestore(serviceApp), 'garage_reports');
 
@@ -32,22 +30,45 @@ export async function createReport(report, photo) {
   }
 }
 
+async function getGarageSession(user) {
+  if (!user || user.isAnonymous) return null;
+  if (user.email?.toLowerCase() === 'lolo.dalzotto@gmail.com') return { generalAdmin: true };
+  const profile = (await getDoc(doc(getFirestore(serviceApp), 'users', user.uid))).data();
+  if (profile?.active === true && profile.sector === 'garage' && ['admin', 'user'].includes(profile.role)) {
+    return { generalAdmin: false };
+  }
+  return null;
+}
+
+export function watchServiceSession(onSession) {
+  const auth = getAuth(serviceApp);
+  let revision = 0;
+  return onAuthStateChanged(auth, async user => {
+    const currentRevision = ++revision;
+    let session = null;
+    try {
+      session = await getGarageSession(user);
+    } catch {
+      // A profile that cannot be read does not grant Garage access.
+    }
+    if (currentRevision === revision && user === auth.currentUser) onSession(session);
+  });
+}
+
 export async function signIn(email, password) {
-  await serviceReady;
-  const { user } = await signInWithEmailAndPassword(serviceAuth, email.trim(), password);
+  const auth = getAuth(serviceApp);
+  const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
   try {
-    if (user.email === 'lolo.dalzotto@gmail.com') return;
-    const profile = (await getDoc(doc(getFirestore(serviceApp), 'users', user.uid))).data();
-    if (profile?.active === true && profile.sector === 'garage' && ['admin', 'user'].includes(profile.role)) return;
+    if (await getGarageSession(user)) return;
     throw new Error('Garage access denied');
   } catch (error) {
-    await firebaseSignOut(serviceAuth);
+    if (auth.currentUser === user) await firebaseSignOut(auth);
     throw error;
   }
 }
 
 export function signOut() {
-  return firebaseSignOut(serviceAuth);
+  return firebaseSignOut(getAuth(serviceApp));
 }
 
 export function watchReports(vehicle, onReports, onError) {
