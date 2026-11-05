@@ -12,6 +12,10 @@ let y = -30;
 let gesture;
 let selectedVehicle = 0;
 let zoom = 1;
+let shiftX = 0;
+let shiftY = 0;
+let pinch;
+const touches = new Map();
 let agentMode = true;
 const reportStatuses = {
   reported: 'Signalé',
@@ -27,7 +31,7 @@ names.forEach((name, index) => {
   cube.append(face);
 });
 function rotate() {
-  cube.style.transform = 'scale(' + zoom + ') rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
+  cube.style.transform = 'translate(' + shiftX + 'px,' + shiftY + 'px) scale(' + zoom + ') rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
 }
 function addPin(face, u, v, status) {
   if (!face) return;
@@ -50,12 +54,37 @@ function mark(face, u, v) {
   marks.set(selectedVehicle, {face, u, v});
   renderMark();
 }
+function pinchState() {
+  const [a, b] = touches.values();
+  return {distance: Math.hypot(b.x - a.x, b.y - a.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2};
+}
+
 scene.addEventListener('pointerdown', event => {
-  if (!event.isPrimary || event.button !== 0) return;
-  gesture = {id:event.pointerId, sx:event.clientX, sy:event.clientY, x, y, dragged:false, face:event.target, u:event.offsetX / event.target.clientWidth * 100, v:event.offsetY / event.target.clientHeight * 100};
+  if (event.target.closest('button') || event.button !== 0) return;
+  if (event.pointerType === 'touch' && isFullscreen()) {
+    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
+    if (touches.size >= 2) {
+      gesture = undefined;
+      pinch = pinchState();
+    }
+  }
+  if (touches.size < 2 && event.isPrimary) {
+    gesture = {id:event.pointerId, sx:event.clientX, sy:event.clientY, x, y, dragged:false, face:event.target, u:event.offsetX / event.target.clientWidth * 100, v:event.offsetY / event.target.clientHeight * 100};
+  }
   scene.setPointerCapture(event.pointerId);
 });
 scene.addEventListener('pointermove', event => {
+  if (touches.has(event.pointerId)) {
+    touches.set(event.pointerId, {x: event.clientX, y: event.clientY});
+    if (pinch && touches.size >= 2) {
+      const next = pinchState();
+      if (pinch.distance > 0 && next.distance > 0) {
+        changeZoom(next.distance / pinch.distance, next.x, next.y);
+      }
+      pinch = next;
+      return;
+    }
+  }
   if (gesture?.id !== event.pointerId) return;
   const dx = event.clientX - gesture.sx;
   const dy = event.clientY - gesture.sy;
@@ -65,16 +94,18 @@ scene.addEventListener('pointermove', event => {
   y = gesture.y + dx;
   rotate();
 });
+function releasePointer(event) {
+  if (touches.delete(event.pointerId)) pinch = touches.size >= 2 ? pinchState() : undefined;
+  if (gesture?.id === event.pointerId) gesture = undefined;
+}
 scene.addEventListener('pointerup', event => {
-  if (gesture?.id !== event.pointerId) return;
-  if (agentMode && !gesture.dragged) {
-    if (gesture.face.classList.contains('face')) {
-      mark(gesture.face, gesture.u, gesture.v);
-    }
+  if (agentMode && gesture?.id === event.pointerId && !gesture.dragged && gesture.face.classList.contains('face')) {
+    mark(gesture.face, gesture.u, gesture.v);
   }
-  gesture = undefined;
+  releasePointer(event);
 });
-scene.addEventListener('lostpointercapture', () => { gesture = undefined; });
+scene.addEventListener('lostpointercapture', releasePointer);
+scene.addEventListener('pointercancel', releasePointer);
 document.querySelectorAll('[data-turn]').forEach(button => button.onclick = () => {
   const delta = {left:[0,-45],right:[0,45],up:[-45,0],down:[45,0]}[button.dataset.turn];
   x += delta[0];
@@ -90,12 +121,85 @@ byId('clear').onclick = () => {
   marks.delete(selectedVehicle);
   renderMark();
 };
-function changeZoom(delta) {
-  zoom = Math.max(0.75, Math.min(1.6, zoom + delta));
+function changeZoom(factor, clientX, clientY) {
+  const next = Math.max(1, Math.min(8, zoom * factor));
+  const ratio = next / zoom;
+  if (clientX !== undefined) {
+    const box = scene.getBoundingClientRect();
+    const anchorX = clientX - box.left - box.width / 2;
+    const anchorY = clientY - box.top - box.height / 2;
+    shiftX = anchorX + (shiftX - anchorX) * ratio;
+    shiftY = anchorY + (shiftY - anchorY) * ratio;
+  } else {
+    shiftX *= ratio;
+    shiftY *= ratio;
+  }
+  zoom = next;
+  if (zoom === 1) shiftX = shiftY = 0;
   rotate();
 }
-byId('zoom-in').onclick = () => changeZoom(0.15);
-byId('zoom-out').onclick = () => changeZoom(-0.15);
+byId('zoom-in').onclick = () => changeZoom(1 / 0.72);
+byId('zoom-out').onclick = () => changeZoom(1 / 1.38);
+byId('zoom-reset').onclick = () => {
+  x = -20;
+  y = -30;
+  zoom = 1;
+  shiftX = shiftY = 0;
+  rotate();
+};
+function isFullscreen() {
+  return document.fullscreenElement === scene || document.webkitFullscreenElement === scene ||
+    scene.classList.contains('plan-fullscreen-fallback');
+}
+const fullscreenButton = byId('cube-fullscreen');
+function syncFullscreen() {
+  const active = isFullscreen();
+  fullscreenButton.textContent = active ? '✕' : '⛶';
+  const label = active ? 'Quitter le plein écran' : 'Plein écran';
+  fullscreenButton.setAttribute('aria-label', label);
+  fullscreenButton.title = label;
+  if (!active) {
+    zoom = 1;
+    shiftX = shiftY = 0;
+    touches.clear();
+    pinch = undefined;
+    gesture = undefined;
+    rotate();
+  }
+}
+function setFullscreenFallback(active) {
+  scene.classList.toggle('plan-fullscreen-fallback', active);
+  document.body.classList.toggle('plan-fullscreen-body', active);
+  syncFullscreen();
+}
+fullscreenButton.onclick = async () => {
+  if (scene.classList.contains('plan-fullscreen-fallback')) {
+    setFullscreenFallback(false);
+    return;
+  }
+  if (isFullscreen()) {
+    if (document.exitFullscreen) await document.exitFullscreen();
+    else document.webkitExitFullscreen?.();
+    return;
+  }
+  try {
+    if (scene.requestFullscreen) await scene.requestFullscreen();
+    else if (scene.webkitRequestFullscreen) scene.webkitRequestFullscreen();
+    else setFullscreenFallback(true);
+  } catch {
+    setFullscreenFallback(true);
+  }
+};
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && scene.classList.contains('plan-fullscreen-fallback')) setFullscreenFallback(false);
+});
+scene.addEventListener('wheel', event => {
+  if (!isFullscreen()) return;
+  event.preventDefault();
+  changeZoom(event.deltaY < 0 ? 1 / 0.82 : 1 / 1.22, event.clientX, event.clientY);
+}, {passive:false});
 document.querySelectorAll('[data-agent-vehicle]').forEach(button => {
   button.addEventListener('click', () => {
     selectedVehicle = Number(button.dataset.agentVehicle);
