@@ -374,7 +374,7 @@ async function exportSelectedPlan() {
     if (!zone) throw new Error('Choisissez un plan.');
     await downloadPlanPdf({ svg: els.selectedPlan.querySelector('svg'), zone, title: els.planTitle.textContent, anomalies: anomalies.slice() });
   } catch (error) { toast(error.message || 'Le PDF ne peut pas être généré.'); }
-  finally { exportingPlan = false; button.disabled = !els.selectedPlan.querySelector('svg'); button.textContent = 'Télécharger en PDF'; }
+  finally { exportingPlan = false; button.disabled = !els.selectedPlan.querySelector('svg'); button.textContent = 'Télécharger'; }
 }
 
 function renderPlanVisualizer() {
