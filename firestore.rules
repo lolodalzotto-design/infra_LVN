@@ -66,7 +66,7 @@ service cloud.firestore {
             && request.resource.data.username.size() <= 60
             && request.resource.data.usernameKey is string
             && request.resource.data.usernameKey.size() > 0
-            && request.resource.data.sector in ['infra','hcc','both']
+            && request.resource.data.sector in ['infra','hcc','garage','both']
             && request.resource.data.role in ['admin','user','moderator']
             && (request.resource.data.role != 'moderator' || request.resource.data.sector == 'both')
             && (request.resource.data.sector != 'both' || request.resource.data.role == 'moderator')
@@ -146,7 +146,7 @@ service cloud.firestore {
 
       allow create: if validUserProfile(uid) && (
         (uid == request.auth.uid && isBootstrapAdmin())
-        || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc','both'])
+        || (isBootstrapAdmin() && request.resource.data.sector in ['infra','hcc','garage','both'])
         || (isServiceAdmin()
             && request.resource.data.sector == profileSector()
             && request.resource.data.role == 'user'
@@ -189,6 +189,15 @@ service cloud.firestore {
       allow delete: if isInfra();
     }
 
+    match /garage_vehicle_states/{vehicleId} {
+      allow get: if vehicleId in ['1','2','3','4'];
+      allow create, update: if (isBootstrapAdmin()
+          || (hasProfile() && profile().active == true && profileSector() == 'garage' && profile().role in ['admin','user']))
+        && vehicleId in ['1','2','3','4']
+        && request.resource.data.keys().hasOnly(['status'])
+        && request.resource.data.status in ['operational','maintenance'];
+    }
+
     match /garage_reports/{reportId} {
       allow read: if isBootstrapAdmin();
       allow update: if isBootstrapAdmin()
@@ -203,7 +212,7 @@ service cloud.firestore {
         && request.resource.data.actionsTaken.size() <= 240
         && ((request.resource.data.malfunction == true && request.resource.data.actionsTaken.matches('(?s).*[^[:space:]].*'))
             || (request.resource.data.malfunction == false && request.resource.data.actionsTaken == ''))
-        && request.resource.data.vehicle in [1, 2, 3]
+        && request.resource.data.vehicle in [1, 2, 3, 4]
         && request.resource.data.face in ['Avant','Arrière','Droite','Gauche','Dessus','Dessous']
         && request.resource.data.u is number
         && request.resource.data.u >= 0 && request.resource.data.u <= 100
