@@ -48,11 +48,17 @@
 <p><label for="actions-taken">Quelles actions as-tu menées ?</label></p>
 <textarea id="actions-taken" maxlength="240" rows="3" disabled></textarea>
 </div>
+<fieldset>
+<legend>Photo (facultative)</legend>
+<p><label for="photo-camera">Prendre une photo</label><br><input type="file" id="photo-camera" accept="image/*" capture="environment"></p>
+<p><label for="photo-file">Choisir une photo</label><br><input type="file" id="photo-file" accept="image/*"></p>
+<p class="help">Une seule photo, de moins de 8 Mo.</p>
+</fieldset>
 <p><button class="primary" type="submit">Envoyer au Garage</button></p>
 </form>
 <output id="report-result" aria-live="polite"></output>
 </div>
 </section>
 </main>
-<script type="module" src="./page.js?v=2"></script>
+<script type="module" src="./page.js?v=3"></script>
 </html>
