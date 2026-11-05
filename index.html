@@ -110,7 +110,12 @@
   </script>
   <div id="load-error" role="alert" style="color:#a00;font-weight:700;padding:0 16px"></div>
   <script type="module">
-    import('./js/public.js?v=20261019-pwd-toggle-1').catch((error) => {
+    import('./js/public.js?v=20261019-pwd-toggle-1').then(() => {
+      const type = new URLSearchParams(location.search).get('type');
+      if (type === 'infra' || type === 'hcc') {
+        document.querySelector('[data-report-type="' + type + '"]')?.click();
+      }
+    }).catch((error) => {
       console.error('Erreur de démarrage Infra-LVN', error);
       document.getElementById('load-error').textContent =
         'Erreur de démarrage : ' + (error?.message || 'chargement impossible') + '. Rechargez la page.';
