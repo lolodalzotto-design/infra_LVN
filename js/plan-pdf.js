@@ -124,6 +124,7 @@ export function jpegPdf(jpeg, width, height) {
 
 export async function downloadPlanPdf({ svg, zone, title, anomalies }) {
   if (!svg) throw new Error('Choisissez un plan avant de télécharger le PDF.');
+  const editionDate = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
   // Snapshot before asynchronous image loading, even if live data changes.
   const entries = legendEntries(zone.rooms || [], anomalies);
   const viewBox = zone.viewBox || { width: 100, height: 100 };
@@ -134,8 +135,13 @@ export async function downloadPlanPdf({ svg, zone, title, anomalies }) {
   if (!ctx) throw new Error('Votre navigateur ne permet pas de générer le PDF.');
   const width = PAGE.width - PAGE.margin * 2;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const dateLabel = `Édité le ${editionDate}`;
+  ctx.font = '30px Arial, sans-serif';
+  const dateWidth = ctx.measureText(dateLabel).width;
   ctx.fillStyle = '#0d223a'; ctx.font = 'bold 38px Arial, sans-serif';
-  ctx.fillText(title, PAGE.margin, 65, width);
+  ctx.fillText(title, PAGE.margin, 65, width - dateWidth - 60);
+  ctx.font = '30px Arial, sans-serif';
+  ctx.fillText(dateLabel, PAGE.width - PAGE.margin - dateWidth, 65);
   const top = 100;
   // At least 78% of usable height is reserved for the plan, regardless of text.
   const maxPlanHeight = (PAGE.height - top - PAGE.margin) * 0.78;
