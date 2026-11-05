@@ -1,4 +1,4 @@
-import { createReport, signIn, signOut, watchReports, updateStatus, readPhoto } from './reports.js?v=3';
+import { createReport, signIn, signOut, watchReports, updateStatus, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=4';
 
 
 const byId = id => document.getElementById(id);
@@ -290,6 +290,36 @@ report?.addEventListener('submit', async event => {
   }
 });
 
+const vehicleLabels = {
+  operational: 'En caserne',
+  maintenance: 'À la technique',
+  unknown: 'État indisponible'
+};
+const vehicleStates = new Map();
+const vehicleButtons = [...document.querySelectorAll('[data-agent-vehicle], [data-vehicle]')];
+let serviceVehicle = 0;
+
+function renderVehicleStateEditor() {
+  const label = byId('vehicle-state-label');
+  if (!label || !serviceVehicle) return;
+  const state = vehicleStates.get(serviceVehicle) || 'unknown';
+  label.textContent = 'Engin ' + serviceVehicle + ' · ' + vehicleLabels[state];
+  document.querySelectorAll('[data-set-vehicle-state]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.setVehicleState === state));
+  });
+}
+
+vehicleButtons.forEach(button => {
+  const vehicle = Number(button.dataset.agentVehicle || button.dataset.vehicle);
+  const showState = state => {
+    vehicleStates.set(vehicle, state);
+    button.dataset.state = state;
+    button.setAttribute('aria-label', button.textContent + ' · ' + vehicleLabels[state]);
+    if (serviceVehicle === vehicle) renderVehicleStateEditor();
+  };
+  watchVehicleState(vehicle, showState, () => showState('unknown'));
+});
+
 if (!agentMode) {
   const serviceStatus = byId('service-status');
   const list = byId('reports');
@@ -333,6 +363,8 @@ if (!agentMode) {
     visibleReports = [];
     if (!agentMode) renderServicePins();
     byId('service-viewer').hidden = true;
+    byId('vehicle-state-editor').hidden = true;
+    serviceVehicle = 0;
     try {
       await signOut();
       setSignedIn(false);
@@ -342,8 +374,27 @@ if (!agentMode) {
     }
   });
 
+  const stateButtons = [...document.querySelectorAll('[data-set-vehicle-state]')];
+  stateButtons.forEach(button => {
+    button.addEventListener('click', async () => {
+      if (!serviceVehicle) return;
+      const vehicle = serviceVehicle;
+      stateButtons.forEach(choice => { choice.disabled = true; });
+      try {
+        await setVehicleState(vehicle, button.dataset.setVehicleState);
+      } catch {
+        if (serviceVehicle === vehicle) byId('vehicle-state-label').textContent = 'Impossible de modifier l’état de l’engin.';
+      } finally {
+        stateButtons.forEach(choice => { choice.disabled = false; });
+      }
+    });
+  });
+
   document.querySelectorAll('[data-vehicle]').forEach(button => {
     button.addEventListener('click', () => {
+      serviceVehicle = Number(button.dataset.vehicle);
+      byId('vehicle-state-editor').hidden = false;
+      renderVehicleStateEditor();
       stopWatching?.();
       list.replaceChildren();
       visibleReports = [];
