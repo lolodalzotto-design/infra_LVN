@@ -4,13 +4,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Garage LVN</title>
 <link rel="stylesheet" href="../styles.css">
-<style>
-.garage-main{max-width:780px;margin:auto;padding:16px}.garage-panel{margin-top:16px}.garage-panel[hidden],.garage-panel [hidden]{display:none!important}.garage-main [aria-pressed="true"]{background:var(--navy);color:white}.scene{height:340px;display:grid;place-items:center;perspective:620px;touch-action:none;user-select:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;cursor:grab;overflow:hidden}.cube{position:relative;width:130px;height:130px;transform-style:preserve-3d}.face{position:absolute;inset:0;display:grid;place-items:center;backface-visibility:hidden;background:#325d7c;color:white;border:2px solid #b0c9db}.face:nth-child(even){background:#244963}.pin,.status-dot{border:2px solid var(--mark);background:color-mix(in srgb,var(--mark) 42%,transparent);border-radius:50%;width:20px;height:20px}.pin{position:absolute;transform:translate(-50%,-50%);pointer-events:none}.reported{--mark:#ef4444}.in-progress{--mark:#f59e0b}.resolved{--mark:#22c55e}.status-dot{display:inline-block;vertical-align:middle;margin-right:8px}.controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.controls button{padding:8px 12px}output{display:block;margin-top:12px;font-weight:600}.garage-main textarea{width:100%}.garage-main li{margin-block:10px}.garage-main select{margin-inline:8px}
-</style>
+<link rel="stylesheet" href="./garage.css">
 <main class="garage-main">
 <header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Garage</h1><div>Suivi des engins</div></header>
 <p><a href="../">Retour à Je signale</a></p>
-<nav class="segmented" aria-label="Espaces"><button class="segment-btn" id="agent-tab" aria-pressed="true">Espace agent</button><button class="segment-btn" id="service-tab" aria-pressed="false">Espace service</button></nav>
 <section id="agent" class="form-card garage-panel">
 <h2>Déclarer une anomalie</h2>
 <div class="step-title">Quel engin est concerné ?</div>
@@ -47,21 +44,6 @@
 <output id="report-result" aria-live="polite"></output>
 </div>
 </section>
-<section id="service" class="form-card garage-panel" hidden>
-<h2>Engins du garage</h2>
-<form id="login">
-<p><label>Adresse e-mail <input type="email" id="email" required autocomplete="username"></label></p>
-<p><label>Mot de passe <input type="password" id="password" required autocomplete="current-password"></label></p>
-<button>Se connecter</button>
-</form>
-<div id="vehicles" class="segmented" hidden>
-<button class="segment-btn" data-vehicle="1">Engin 1</button><button class="segment-btn" data-vehicle="2">Engin 2</button><button class="segment-btn" data-vehicle="3">Engin 3</button>
-</div>
-<button id="logout" hidden>Se déconnecter</button>
-<p id="service-status" role="status"></p>
-<div id="service-viewer" hidden></div>
-<ul id="reports"></ul>
-</section>
 </main>
-<script type="module" src="./garage.js?v=4"></script>
+<script type="module" src="./page.js"></script>
 </html>
