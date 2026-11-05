@@ -112,9 +112,11 @@
         <div class="plan-visualizer-meta">
           <strong id="plan-title"></strong>
           <span id="plan-anomaly-count" class="help"></span>
-          <button id="plan-download" type="button" class="primary" disabled>Télécharger en PDF</button>
         </div>
         <div id="selected-plan" class="plan-canvas plan-visualizer-canvas"></div>
+        <div style="margin-top:12px">
+          <button id="plan-download" type="button" class="primary" disabled aria-label="Télécharger le plan en PDF">Télécharger</button>
+        </div>
       </section>
 
       <section class="panel anomaly-list-panel">
@@ -126,7 +128,7 @@
 
   <footer>infra_LVN • Suivi des anomalies</footer>
   <div id="modal-root"></div>
-  <script type="module" src="./js/infra.js?v=20261105-pdf-1"></script>
+  <script type="module" src="./js/infra.js?v=20261105-pdf-2"></script>
 </body>
 </html>
 
