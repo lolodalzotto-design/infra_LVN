@@ -15,3 +15,22 @@
 
 .ccf-view { position:absolute; inset:0; width:100%; height:100%; }
 .scene [hidden] { display:none; }
+
+#report-dialog { width:min(680px, calc(100% - 24px)); max-height:calc(100dvh - 24px); border:1px solid var(--line); border-radius:16px; padding:18px; color:var(--navy); background:var(--surface); box-shadow:var(--shadow); }
+#report-dialog::backdrop { background:rgba(13,34,58,.56); }
+.garage-report-dialog-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.garage-report-dialog-header h2 { margin:0; }
+.garage-report-summary { width:100%; text-align:left; }
+.garage-report-summary .status-dot { margin-right:8px; }
+.pin[data-report-id] { pointer-events:auto; cursor:pointer; }
+
+.garage-main.garage-service-main { max-width:1200px; }
+.garage-dashboard-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
+.garage-report-list { min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px; }
+.garage-report-list h3 { margin-top:0; }
+.garage-report-list ul { padding:0; margin:0; list-style:none; }
+.garage-report-summary, #report-dialog-detail { overflow-wrap:anywhere; }
+#report-dialog textarea { width:100%; }
+@media (min-width: 860px) {
+  .garage-dashboard-grid { grid-template-columns:minmax(0, 3fr) minmax(270px, 2fr); }
+}

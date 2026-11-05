@@ -1,4 +1,4 @@
-import { createCcfViewer } from './ccf-viewer.js';
+import { createCcfViewer } from './ccf-viewer.js?v=20261105-report-dialog';
 import { createReport, signIn, signOut, watchServiceSession, watchReports, updateStatus, addReportNote, readPhoto, watchVehicleState, setVehicleState } from './reports.js?v=20261105-garage-history';
 
 
@@ -50,10 +50,11 @@ function rotate() {
   if (ccfActive) ccfViewer.setCamera({ x, y, zoom, shiftX, shiftY });
   cube.style.transform = 'translate(' + shiftX + 'px,' + shiftY + 'px) scale(' + zoom + ') rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
 }
-function addPin(face, u, v, status) {
+function addPin(face, u, v, status, reportId) {
   if (!face) return;
   const pin = document.createElement('span');
   pin.className = 'pin ' + status;
+  if (reportId) pin.dataset.reportId = reportId;
   pin.style.left = u + '%';
   pin.style.top = v + '%';
   face.append(pin);
@@ -120,6 +121,7 @@ function releasePointer(event) {
   if (touches.delete(event.pointerId)) pinch = touches.size >= 2 ? pinchState() : undefined;
   if (gesture?.id === event.pointerId) gesture = undefined;
 }
+let openReportFromPin;
 scene.addEventListener('pointerup', event => {
   if (agentMode && gesture?.id === event.pointerId && !gesture.dragged) {
     if (ccfActive) {
@@ -128,6 +130,10 @@ scene.addEventListener('pointerup', event => {
     } else if (gesture.face.classList.contains('face')) {
       mark(gesture.face.dataset.face, gesture.u, gesture.v);
     }
+  }
+  if (!agentMode && gesture?.id === event.pointerId && !gesture.dragged) {
+    const id = ccfActive ? ccfViewer.pickPin(event.clientX, event.clientY) : gesture.face.dataset.reportId;
+    if (id) openReportFromPin(id);
   }
   releasePointer(event);
 });
@@ -365,6 +371,55 @@ vehicleButtons.forEach(button => {
 if (!agentMode) {
   const serviceStatus = byId('service-status');
   const list = byId('reports');
+  const reportDialog = byId('report-dialog');
+  const dialogDetail = byId('report-dialog-detail');
+  const dialogStatus = byId('report-dialog-status');
+  let openReportId;
+  let lastDetailVersion;
+  let previousFocus;
+
+  reportDialog.addEventListener('close', () => {
+    if (reportDialog.open) return;
+    const id = openReportId;
+    openReportId = undefined;
+    lastDetailVersion = undefined;
+    dialogDetail.replaceChildren();
+    if (previousFocus?.isConnected) previousFocus.focus();
+    else if (id) list.querySelector('[data-report-id="' + CSS.escape(id) + '"]')?.focus();
+  });
+
+  function showReport(id, opener) {
+    const row = visibleReports.find(report => report.id === id);
+    if (!row) return;
+    openReportId = id;
+    previousFocus = opener || scene;
+    lastDetailVersion = undefined;
+    dialogStatus.textContent = '';
+    refreshReportDialog();
+    if (!reportDialog.open) reportDialog.showModal();
+  }
+
+  function refreshReportDialog() {
+    if (!openReportId) return;
+    const row = visibleReports.find(report => report.id === openReportId);
+    if (!row) {
+      if (reportDialog.open) reportDialog.close();
+      return;
+    }
+    const version = JSON.stringify(row);
+    if (version === lastDetailVersion) return;
+    lastDetailVersion = version;
+    const editing = dialogDetail.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA';
+    const selection = editing ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+    dialogDetail.replaceChildren(renderReportDetail(row));
+    if (selection) {
+      const field = dialogDetail.querySelector('textarea');
+      field.focus({preventScroll: true});
+      field.setSelectionRange(...selection);
+    }
+  }
+
+  openReportFromPin = showReport;
   const login = byId('login');
   const topbar = byId('service-topbar');
   const menuButton = byId('service-menu-button');
@@ -447,13 +502,14 @@ if (!agentMode) {
       submit.disabled = true;
       noteDrafts.delete(row.id);
       try {
+        if (reportDialog.open) dialogStatus.textContent = '';
         await addReportNote(row.id, note);
         field.value = '';
       } catch {
         noteDrafts.set(row.id, note);
-        const current = list.querySelector('[data-report-id="' + CSS.escape(row.id) + '"] textarea');
+        const current = openReportId === row.id ? dialogDetail.querySelector('textarea') : null;
         if (current && !current.value) current.value = note;
-        serviceStatus.textContent = 'Impossible d’ajouter la note. Réessayez.';
+        if (openReportId === row.id && reportDialog.open) dialogStatus.textContent = 'Impossible d’ajouter la note. Réessayez.';
       } finally {
         field.disabled = false;
         submit.disabled = false;
@@ -465,10 +521,72 @@ if (!agentMode) {
     item.append(journal, historyTitle, history);
   }
 
+  function renderReportDetail(row) {
+    const item = document.createElement('article');
+    item.dataset.reportId = row.id;
+    const reporter = [row.reporterFirstName, row.reporterLastName].filter(Boolean).join(' ');
+    const status = row.status || 'reported';
+    const dot = document.createElement('span');
+    dot.className = 'status-dot ' + status;
+    dot.setAttribute('aria-hidden', 'true');
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', 'Statut de l’anomalie');
+    Object.entries(reportStatuses).forEach(([value, label]) => {
+      select.add(new Option(label, value, false, value === status));
+    });
+    select.addEventListener('change', async () => {
+      select.disabled = true;
+      try {
+        dialogStatus.textContent = '';
+        await updateStatus(row.id, select.value);
+      } catch {
+        select.value = status;
+        if (openReportId === row.id && reportDialog.open) dialogStatus.textContent = 'Impossible de modifier le statut.';
+      } finally {
+        select.disabled = false;
+      }
+    });
+    const author = document.createElement('p');
+    author.textContent = 'Signalé par : ' + (reporter || 'non renseigné');
+    item.append(dot, row.face + ' · ' + row.description, select, author);
+    if (row.photoPath) {
+      const photoButton = document.createElement('button');
+      photoButton.type = 'button';
+      photoButton.textContent = 'Voir la photo';
+      photoButton.addEventListener('click', async () => {
+        photoButton.disabled = true;
+        try {
+          const blob = await readPhoto(row.photoPath);
+          if (!item.isConnected) return;
+          const url = URL.createObjectURL(blob);
+          const image = document.createElement('img');
+          image.alt = 'Photo jointe au signalement';
+          image.style.maxWidth = '100%';
+          const release = () => URL.revokeObjectURL(url);
+          image.addEventListener('load', release, {once:true});
+          image.addEventListener('error', release, {once:true});
+          image.src = url;
+          photoButton.replaceWith(image);
+        } catch {
+          photoButton.textContent = 'Réessayer d’ouvrir la photo';
+          photoButton.disabled = false;
+        }
+      });
+      item.append(' ', photoButton);
+    }
+    if (typeof row.malfunction === 'boolean') {
+      const detail = document.createElement('p');
+      detail.textContent = row.malfunction ? 'Dysfonctionnement : oui. Actions menées : ' + row.actionsTaken : 'Dysfonctionnement : non.';
+      item.append(detail);
+    }
+    renderReportJournal(item, row, reporter);
+    return item;
+  }
+
   function renderServicePins() {
     clearPins();
     if (ccfActive) ccfViewer.setPins(visibleReports);
-    else visibleReports.forEach(row => addPin(cubeFace(row.face), row.u, row.v, row.status || 'reported'));
+    else visibleReports.forEach(row => addPin(cubeFace(row.face), row.u, row.v, row.status || 'reported', row.id));
   }
 
   watchServiceSession(session => {
@@ -478,6 +596,7 @@ if (!agentMode) {
     topbar.classList.toggle('hidden', !signedIn);
     sectorLinks.forEach(link => link.classList.toggle('hidden', !session?.generalAdmin));
     setMenuOpen(false);
+    if (reportDialog.open) reportDialog.close();
     stopWatching?.();
     stopWatching = undefined;
     list.replaceChildren();
@@ -485,6 +604,7 @@ if (!agentMode) {
     visibleReports = [];
     renderServicePins();
     byId('service-viewer').hidden = true;
+    byId('report-list-panel').hidden = true;
     byId('vehicle-state-editor').hidden = true;
     serviceVehicle = 0;
     serviceStatus.textContent = signedIn ? 'Sélectionnez un engin.' : '';
@@ -530,6 +650,7 @@ if (!agentMode) {
 
   document.querySelectorAll('[data-vehicle]').forEach(button => {
     button.addEventListener('click', () => {
+      if (reportDialog.open) reportDialog.close();
       serviceVehicle = Number(button.dataset.vehicle);
       byId('vehicle-state-editor').hidden = false;
       renderVehicleStateEditor();
@@ -538,6 +659,7 @@ if (!agentMode) {
       visibleReports = [];
       if (!agentMode) renderServicePins();
       byId('service-viewer').hidden = false;
+      byId('report-list-panel').hidden = false;
       showVehicleModel(serviceVehicle);
       serviceStatus.textContent = 'Chargement…';
       stopWatching = watchReports(Number(button.dataset.vehicle), rows => {
@@ -546,66 +668,29 @@ if (!agentMode) {
         if (!agentMode) renderServicePins();
         list.replaceChildren(...rows.map(row => {
           const item = document.createElement('li');
-          item.dataset.reportId = row.id;
-          const reporter = [row.reporterFirstName, row.reporterLastName].filter(Boolean).join(' ');
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'garage-report-summary';
+          button.dataset.reportId = row.id;
+          button.setAttribute('aria-haspopup', 'dialog');
           const status = row.status || 'reported';
           const dot = document.createElement('span');
           dot.className = 'status-dot ' + status;
           dot.setAttribute('aria-hidden', 'true');
-          const select = document.createElement('select');
-          select.setAttribute('aria-label', 'Statut du signalement ' + row.description);
-          Object.entries(reportStatuses).forEach(([value, label]) => {
-            select.add(new Option(label, value, false, value === status));
-          });
-          select.addEventListener('change', async () => {
-            select.disabled = true;
-            try {
-              await updateStatus(row.id, select.value);
-            } catch {
-              select.value = status;
-              serviceStatus.textContent = 'Impossible de modifier le statut.';
-            } finally {
-              select.disabled = false;
-            }
-          });
-          const author = document.createElement('p');
-          author.textContent = 'Signalé par : ' + (reporter || 'non renseigné');
-          item.append(dot, row.face + ' · ' + row.description, select, author);
-        if (row.photoPath) {
-          const photoButton = document.createElement('button');
-          photoButton.type = 'button';
-          photoButton.textContent = 'Voir la photo';
-          photoButton.addEventListener('click', async () => {
-            photoButton.disabled = true;
-            try {
-              const blob = await readPhoto(row.photoPath);
-              if (!item.isConnected) return;
-              const url = URL.createObjectURL(blob);
-              const image = document.createElement('img');
-              image.alt = 'Photo jointe au signalement';
-              image.style.maxWidth = '100%';
-              const release = () => URL.revokeObjectURL(url);
-              image.addEventListener('load', release, {once:true});
-              image.addEventListener('error', release, {once:true});
-              image.src = url;
-              photoButton.replaceWith(image);
-            } catch {
-              photoButton.textContent = 'Réessayer d’ouvrir la photo';
-              photoButton.disabled = false;
-            }
-          });
-          item.append(' ', photoButton);
-        }
-        if (typeof row.malfunction === 'boolean') {
-          const detail = document.createElement('p');
-          detail.textContent = row.malfunction ? 'Dysfonctionnement : oui. Actions menées : ' + row.actionsTaken : 'Dysfonctionnement : non.';
-          item.append(detail);
-        }
-          renderReportJournal(item, row, reporter);
+          button.append(dot, row.face + ' · ' + row.description + ' · ' + reportStatuses[status]);
+          button.addEventListener('click', () => showReport(row.id, button));
+          item.append(button);
           return item;
         }));
+        if (!rows.length) {
+          const empty = document.createElement('li');
+          empty.textContent = 'Aucune anomalie pour cet engin.';
+          list.append(empty);
+        }
+        refreshReportDialog();
       }, () => {
         visibleReports = [];
+        if (reportDialog.open) reportDialog.close();
         if (!agentMode) renderServicePins();
         serviceStatus.textContent = 'Lecture impossible. Vérifie ton accès au Garage.';
         list.replaceChildren();

@@ -5,8 +5,8 @@
 <title>Service Garage LVN</title>
 <meta name="apple-mobile-web-app-title" content="Garage LVN">
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=20261105-ccf-inline">
-<main class="garage-main">
+<link rel="stylesheet" href="./garage.css?v=20261105-report-dialog">
+<main class="garage-main garage-service-main">
 <header id="service-topbar" class="infra-topbar garage-service-topbar hidden">
   <div class="infra-topbar-brand">GARAGE LVN</div>
   <div class="infra-topbar-user"></div>
@@ -51,6 +51,7 @@
 </div>
 </div>
 <p id="service-status" role="status"></p>
+<div class="garage-dashboard-grid">
 <div id="service-viewer" hidden>
 <p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
 <div class="scene plan-navigable" id="scene" tabindex="0" aria-label="Vue de l’engin. Flèches pour tourner." style="position:relative">
@@ -69,8 +70,20 @@
 </div>
 
 </div>
-<ul id="reports"></ul>
+<section id="report-list-panel" class="garage-report-list" aria-labelledby="report-list-title" hidden>
+  <h3 id="report-list-title">Anomalies de l’engin</h3>
+  <ul id="reports"></ul>
 </section>
+</div>
+</section>
+<dialog id="report-dialog" aria-labelledby="report-dialog-title">
+  <div class="garage-report-dialog-header">
+    <h2 id="report-dialog-title">Fiche anomalie</h2>
+    <form method="dialog"><button type="submit" aria-label="Fermer la fiche" autofocus>✕</button></form>
+  </div>
+  <p id="report-dialog-status" role="status"></p>
+  <div id="report-dialog-detail"></div>
+</dialog>
 </main>
-<script type="module" src="./page.js?v=20261105-garage-history"></script>
+<script type="module" src="./page.js?v=20261105-report-dialog"></script>
 </html>

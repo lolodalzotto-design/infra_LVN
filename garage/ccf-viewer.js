@@ -69,6 +69,7 @@ export function createCcfViewer(canvas) {
   let camera = { x: -20, y: -30, zoom: 1, shiftX: 0, shiftY: 0 };
   let polygons = [];
   let pins = [];
+  let visiblePins = [];
   let toward = [0, 0, 1];
 
   function draw() {
@@ -115,6 +116,7 @@ export function createCcfViewer(canvas) {
       ctx.stroke();
     }
 
+    visiblePins = [];
     for (const pin of pins) {
       const side = sides[pin.face];
       if (!side || toward[side.axis] * side.sign <= .03) continue;
@@ -123,6 +125,7 @@ export function createCcfViewer(canvas) {
       const [x, y, depth] = project(point);
       const surface = surfaceAt(polygons, x, y);
       if (surface && surface.depth > depth + .07) continue;
+      if (pin.id) visiblePins.push({id: pin.id, x, y});
       const color = colors[pin.status] || colors.reported;
       ctx.beginPath();
       ctx.arc(x, y, 9, 0, Math.PI * 2);
@@ -138,6 +141,15 @@ export function createCcfViewer(canvas) {
   return {
     setCamera(next) { camera = next; draw(); },
     setPins(next) { pins = next; draw(); },
+    pickPin(clientX, clientY) {
+      const box = canvas.getBoundingClientRect();
+      const x = clientX - box.left, y = clientY - box.top;
+      for (let i = visiblePins.length - 1; i >= 0; i--) {
+        const pin = visiblePins[i];
+        if (Math.hypot(pin.x - x, pin.y - y) <= 14) return pin.id;
+      }
+      return null;
+    },
     pick(clientX, clientY) {
       const box = canvas.getBoundingClientRect();
       const hit = surfaceAt(polygons, clientX - box.left, clientY - box.top);
