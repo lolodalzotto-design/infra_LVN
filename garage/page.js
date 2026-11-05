@@ -324,6 +324,28 @@ if (!agentMode) {
   const serviceStatus = byId('service-status');
   const list = byId('reports');
   const login = byId('login');
+  const topbar = byId('service-topbar');
+  const menuButton = byId('service-menu-button');
+  const menu = byId('service-menu');
+  const sectorLinks = menu.querySelectorAll('[data-service-sector]');
+
+  function setMenuOpen(open) {
+    menu.classList.toggle('hidden', !open);
+    menuButton.classList.toggle('active', open);
+    menuButton.setAttribute('aria-expanded', String(open));
+    menuButton.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+  }
+
+  menuButton.addEventListener('click', () => setMenuOpen(menu.classList.contains('hidden')));
+  document.addEventListener('click', event => {
+    if (!menu.contains(event.target) && !menuButton.contains(event.target)) setMenuOpen(false);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !menu.classList.contains('hidden')) {
+      setMenuOpen(false);
+      menuButton.focus();
+    }
+  });
   let stopWatching;
   let visibleReports = [];
 
@@ -339,8 +361,9 @@ if (!agentMode) {
     const signedIn = Boolean(session);
     login.hidden = signedIn;
     byId('vehicles').hidden = !signedIn;
-    byId('logout').hidden = !signedIn;
-    byId('service-sector-switch').hidden = !session?.generalAdmin;
+    topbar.classList.toggle('hidden', !signedIn);
+    sectorLinks.forEach(link => link.classList.toggle('hidden', !session?.generalAdmin));
+    setMenuOpen(false);
     stopWatching?.();
     stopWatching = undefined;
     list.replaceChildren();

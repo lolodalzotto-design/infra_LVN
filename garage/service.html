@@ -5,16 +5,27 @@
 <title>Service Garage LVN</title>
 <meta name="apple-mobile-web-app-title" content="Garage LVN">
 <link rel="stylesheet" href="../styles.css">
-<link rel="stylesheet" href="./garage.css?v=3">
+<link rel="stylesheet" href="./garage.css?v=20261105-garage-menu">
 <main class="garage-main">
+<header id="service-topbar" class="infra-topbar garage-service-topbar hidden">
+  <div class="infra-topbar-brand">GARAGE LVN</div>
+  <div class="infra-topbar-user"></div>
+  <div class="infra-topbar-actions">
+    <div class="infra-menu-wrap">
+      <button id="service-menu-button" class="infra-menu-button" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="service-menu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="service-menu" class="infra-menu hidden" aria-label="Menu Garage">
+        <a class="infra-menu-item infra-menu-primary" href="../index.html">Signaler une anomalie</a>
+        <a class="infra-menu-item hidden" data-service-sector href="../infra.html">Passer au secteur INFRA</a>
+        <a class="infra-menu-item hidden" data-service-sector href="../hcc.html">Passer au secteur HCC</a>
+        <button id="logout" class="infra-menu-item infra-menu-danger" type="button">Déconnexion</button>
+      </nav>
+    </div>
+  </div>
+</header>
 <header class="hero"><small>CASERNE DE LOUVAIN </small><h1>Service Garage</h1><div>Suivi des engins</div></header>
 <section id="service" class="form-card garage-panel">
-<div id="service-sector-switch" hidden>
-<nav class="segmented" aria-label="Changer de secteur">
-<a class="segment-btn" href="../infra.html">Passer à INFRA</a>
-<a class="segment-btn" href="../hcc.html">Passer à HCC</a>
-</nav>
-</div>
 <details>
 <summary>Ajouter à l’écran d’accueil</summary>
 <p>Sur iPhone, ouvrez cette page dans Safari, puis touchez Partager et Sur l’écran d’accueil.</p>
@@ -37,7 +48,6 @@
 <button type="button" class="segment-btn" data-set-vehicle-state="maintenance">À la technique</button>
 </div>
 </div>
-<button id="logout" hidden>Se déconnecter</button>
 <p id="service-status" role="status"></p>
 <div id="service-viewer" hidden>
 <p>Fais glisser pour tourner. Passe en plein écran pour zoomer.</p>
@@ -59,5 +69,5 @@
 <ul id="reports"></ul>
 </section>
 </main>
-<script type="module" src="./page.js?v=20261105-garage-switch"></script>
+<script type="module" src="./page.js?v=20261105-garage-menu"></script>
 </html>

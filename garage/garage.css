@@ -10,3 +10,5 @@
 .segment-btn.vehicle-state[data-state="maintenance"] { background:rgba(239,68,68,.48); }
 .segment-btn.vehicle-state[data-state="unknown"] { background:var(--surface); }
 .segment-btn.vehicle-state[aria-pressed="true"] { border-color:var(--navy); box-shadow:inset 0 0 0 1px var(--navy); }
+
+.garage-service-topbar { margin-top:-16px; }
