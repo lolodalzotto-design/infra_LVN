@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getAuth, inMemoryPersistence, setPersistence, signInAnonymously, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import { addDoc, collection, doc, getFirestore, onSnapshot, query, serverTimestamp, updateDoc, where } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { addDoc, collection, doc, getDoc, getFirestore, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { deleteObject, getBlob, getStorage, ref, uploadBytes } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
@@ -34,7 +34,16 @@ export async function createReport(report, photo) {
 
 export async function signIn(email, password) {
   await serviceReady;
-  return signInWithEmailAndPassword(serviceAuth, email.trim(), password);
+  const { user } = await signInWithEmailAndPassword(serviceAuth, email.trim(), password);
+  try {
+    if (user.email === 'lolo.dalzotto@gmail.com') return;
+    const profile = (await getDoc(doc(getFirestore(serviceApp), 'users', user.uid))).data();
+    if (profile?.active === true && profile.sector === 'garage' && ['admin', 'user'].includes(profile.role)) return;
+    throw new Error('Garage access denied');
+  } catch (error) {
+    await firebaseSignOut(serviceAuth);
+    throw error;
+  }
 }
 
 export function signOut() {
@@ -55,4 +64,16 @@ export function updateStatus(id, status) {
 
 export function readPhoto(path) {
   return getBlob(ref(getStorage(serviceApp), path), 8 * 1024 * 1024);
+}
+
+export function watchVehicleState(vehicle, onState, onError) {
+  const statusRef = doc(getFirestore(agentApp), 'garage_vehicle_states', String(vehicle));
+  return onSnapshot(statusRef, snapshot => {
+    onState(snapshot.data()?.status ?? (vehicle === 4 ? 'maintenance' : 'operational'));
+  }, onError);
+}
+
+export function setVehicleState(vehicle, status) {
+  const statusRef = doc(getFirestore(serviceApp), 'garage_vehicle_states', String(vehicle));
+  return setDoc(statusRef, { status });
 }
